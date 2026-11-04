@@ -22,8 +22,11 @@ import tempfile
 from pathlib import Path
 
 from .allowlist import Allowlist, host_of
+from .inference import InferenceClient
 from .lookalike import KNOWN_BRANDS, assess
+from .preflight import run_preflight
 from .receipts import ReceiptLog
+from .switchtable import probe_expect, triggers_for
 
 
 def _chromium_executable() -> str | None:
@@ -74,6 +77,15 @@ class Runner:
         # approve(action_description) -> bool; default denies.
         self.approve = approve or (lambda desc: False)
         self.extracted: dict = {}
+        # P3 fold-in: the when-to-switch table (opt-in per
+        # task) + its bounded switch budget.
+        self.switch_on = bool(task.get("switch_table"))
+        self.switch_budget = int(task.get("switch_budget", 3))
+        self.switches_used = 0
+        self._last_verdict: dict | None = None
+        # P4 fold-in: availability pre-flight report, when run.
+        self.preflight_report: dict | None = None
+        self._status = "complete"
 
     # -- guards ------------------------------------------------
     def _route_guard(self, route):
@@ -100,10 +112,87 @@ class Runner:
         brands = tuple(self.task["brands"]) \
             if self.task.get("brands") else KNOWN_BRANDS
         verdict = assess(page.url, html, brands)
+        self._last_verdict = verdict
         if verdict["contained"]:
             self.log.emit("page", "contained-lookalike",
                           page.url, verdict["reason"])
         return verdict
+
+    # -- P3: mode switching ------------------------------------
+    def _vision_verify(self, page, step, triggers) -> None:
+        """One receipted switch: dom -> vision-verify -> dom.
+
+        Binds the strongest checker available: the Vultr
+        inference client when configured, else the human
+        approval seam. Raises ApprovalRequired when the
+        budget is exhausted or verification refuses.
+        """
+        if self.switches_used >= self.switch_budget:
+            self.log.emit("mode-switch", "switch-budget-exceeded",
+                          page.url,
+                          f"budget {self.switch_budget} exhausted; "
+                          f"triggers={triggers} — task halts at "
+                          "the approval seam")
+            raise ApprovalRequired("switch budget exhausted")
+        self.switches_used += 1
+        shot = self.quarantine_dir / \
+            f"switch-{self.switches_used}.png"
+        try:
+            page.screenshot(path=str(shot))
+            shot_note = f"screenshot={shot.name}"
+        except Exception:
+            shot_note = "screenshot unavailable"
+        self.log.emit("mode-switch", "mode-switched", page.url,
+                      f"triggers={triggers} dom->vision-verify "
+                      f"(switch {self.switches_used}/"
+                      f"{self.switch_budget}; adapter loss: "
+                      f"{shot_note} + verify step)")
+        client = InferenceClient()
+        if client.available:
+            import base64
+            img = base64.b64encode(shot.read_bytes()).decode() \
+                if shot.exists() else ""
+            prompt = ("You are the vision-verify gate for a "
+                      "sandboxed browser clerk. The page "
+                      "triggered: " + ", ".join(triggers) +
+                      ". If the page is what it claims to be "
+                      "and the pending action is safe, answer "
+                      "VERIFIED; otherwise answer REFUSE with "
+                      "one line of reason.")
+            try:
+                answer = client.chat([{"role": "user", "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {
+                        "url": f"data:image/png;base64,{img}"}}]}])
+                if answer.strip().upper().startswith("VERIFIED"):
+                    self.log.emit("mode-switch", "vision-verified",
+                                  page.url,
+                                  "via vultr-inference vision")
+                    return
+                raise ApprovalRequired(
+                    f"vision-verify refused: {answer[:120]}")
+            except ApprovalRequired:
+                raise
+            except Exception as e:
+                self.log.emit("mode-switch", "allowed", page.url,
+                              f"inference verify failed "
+                              f"({type(e).__name__}) — falling to "
+                              "the human seam, never silently")
+        if not self.approve(
+                f"vision-verify (inference unavailable — human "
+                f"form) triggers={triggers} on {page.url}"):
+            raise ApprovalRequired("vision-verify not approved")
+        self.log.emit("mode-switch", "vision-verified", page.url,
+                      "via human approval seam (inference "
+                      "unavailable)")
+
+    def _switch_check(self, page, step, expect_state=None):
+        if not self.switch_on:
+            return
+        fired = triggers_for(step, self._last_verdict,
+                             expect_state)
+        if fired:
+            self._vision_verify(page, step, fired)
 
     # -- main loop ---------------------------------------------
     def run(self) -> dict:
@@ -125,14 +214,30 @@ class Runner:
                 ctx.route("**/*", self._route_guard)
                 page = ctx.pages[0] if ctx.pages else ctx.new_page()
                 page.on("download", self._on_download)
-                self._drive(page)
+                if self.task.get("preflight"):
+                    # P4 fold-in: scout the plan before
+                    # executing it; blocked steps halt the
+                    # run — the availability report is the
+                    # deliverable.
+                    self.preflight_report = run_preflight(
+                        page, self.task, self.log)
+                    if self.preflight_report["blocked"] and \
+                            not self.task.get("proceed_anyway"):
+                        self._status = "preflight-blocked"
+                if self._status == "complete":
+                    self._drive(page)
                 ctx.close()
             self.log.emit("task", "task-complete",
-                          detail=f"extracted={sorted(self.extracted)}")
-            return {"task_id": self.task_id, "status": "complete",
-                    "extracted": self.extracted,
-                    "receipts": self.log.rows,
-                    "receipt_chain_valid": self.log.verify()}
+                          detail=f"status={self._status} "
+                                 f"extracted={sorted(self.extracted)}")
+            result = {"task_id": self.task_id,
+                      "status": self._status,
+                      "extracted": self.extracted,
+                      "receipts": self.log.rows,
+                      "receipt_chain_valid": self.log.verify()}
+            if self.preflight_report is not None:
+                result["preflight"] = self.preflight_report
+            return result
         except ApprovalRequired as e:
             self.log.emit("task", "task-failed",
                           detail=f"approval not granted: {e}")
@@ -157,7 +262,18 @@ class Runner:
                 verdict = self._assess_page(page)
                 if verdict["contained"]:
                     break  # containment: no interaction at all
+                # sub-threshold lure signals escalate to
+                # vision-verify before any further action
+                self._switch_check(page, step)
+            elif action == "wait":
+                page.wait_for_timeout(int(step.get("ms", 500)))
+                self.log.emit("step", "allowed", page.url,
+                              f"waited {step.get('ms', 500)}ms")
             elif action == "extract":
+                # a declared expectation that no longer
+                # matches = the page changed under the clerk
+                self._switch_check(
+                    page, step, probe_expect(page, step))
                 for name, selector in (
                         step.get("fields") or {}).items():
                     # real pages render asynchronously after
@@ -178,12 +294,18 @@ class Runner:
                 verdict = self._assess_page(page)
                 if verdict["contained"]:
                     break
+                self._switch_check(page, step)
                 page.click(step["selector"])
                 self.log.emit("click", "allowed", page.url,
                               step["selector"])
             elif action == "fill":
                 # Credential-shaped fills are consequential.
-                if step.get("sensitive"):
+                if step.get("sensitive") and self.switch_on:
+                    # the switch table mechanizes the gate:
+                    # vision-verify IS the approval for this
+                    # step class when the table is on
+                    self._switch_check(page, step)
+                elif step.get("sensitive"):
                     self.log.emit("fill", "approval-required",
                                   page.url,
                                   "sensitive fill requested human "
@@ -196,6 +318,9 @@ class Runner:
                 self.log.emit("fill", "allowed", page.url,
                               step.get("selector", ""))
             elif action == "download":
+                # downloads are a consequential class in the
+                # switch table — verify before the click
+                self._switch_check(page, step)
                 with page.expect_download() as dl:
                     page.click(step["selector"])
                 self._on_download(dl.value)

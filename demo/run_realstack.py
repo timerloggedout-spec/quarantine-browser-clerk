@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Real-stack demo — the T2 evidence run (GitHub Actions).
 
-Three legs against the production runner machinery:
+Five legs against the production runner machinery:
   A  LIVE positive: a task against a real allowlisted site
      (example.com) — extract + receipts + hash chain.
   B  SIGNATURE: the lookalike containment moment — the fake
@@ -13,9 +13,18 @@ Three legs against the production runner machinery:
      domain (vultr.com) must NOT be contained. Recorded with
      its outcome either way — third-party reachability from
      CI is not clerk behavior, so it never gates the job.
+  D  SWITCH (P3 fold-in): a fixture page swaps its DOM
+     mid-task and injects an agent-directed instruction;
+     the decision table fires (state-mismatch), the switch
+     to vision-verify is receipted with its trigger, and
+     the clerk acts on the verified current state.
+  E  PREFLIGHT (P4 fold-in): a three-step plan is scouted
+     before execution — automatable / gated / blocked
+     availability receipts — and the blocked step halts
+     the run; the report is the deliverable.
 
 Outputs land in out/: one workdir per leg (receipts.jsonl
-each) + summary.json. Exit 0 iff legs A and B pass.
+each) + summary.json. Exit 0 iff legs A, B, D and E pass.
 """
 from __future__ import annotations
 
@@ -38,7 +47,10 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        name = {"/login": "lookalike.html"}.get(self.path)
+        name = {"/login": "lookalike.html",
+                "/catalog": "target.html",
+                "/loginwall": "loginwall.html",
+                "/swap": "swap.html"}.get(self.path)
         if name is None:
             self.send_response(404)
             self.end_headers()
@@ -169,16 +181,76 @@ def leg_c() -> dict:
         return {"ok": None, "error": f"{type(e).__name__}: {e}"}
 
 
+def _fixture_args() -> list:
+    return ["--no-proxy-server",
+            "--host-resolver-rules=MAP example.test 127.0.0.1"]
+
+
+def leg_d(port: int) -> dict:
+    base = f"http://example.test:{port}"
+    task = {"id": "realstack-d-switch",
+            "url": f"{base}/swap",
+            "allowed_domains": ["example.test"],
+            "chromium_args": _fixture_args(),
+            "switch_table": True,
+            "steps": [
+                {"action": "goto", "url": f"{base}/swap"},
+                {"action": "wait", "ms": 1500},
+                {"action": "extract",
+                 "fields": {"price": "#price"},
+                 "expect": {"selector": "#price",
+                            "contains": "$42.00"}}]}
+    r = Runner(task, _wd("d-switch"),
+               approve=lambda desc: True).run()
+    switched = [row for row in r["receipts"]
+                if row["verdict"] == "mode-switched"]
+    verdicts = [row["verdict"] for row in r["receipts"]]
+    ok = (any("state-mismatch" in row["detail"]
+              for row in switched)
+          and "vision-verified" in verdicts
+          and r["extracted"].get("price") == "$4,200.00"
+          and r["receipt_chain_valid"])
+    return {"ok": ok, "verdicts": verdicts,
+            "extracted": r["extracted"],
+            "chain_valid": r["receipt_chain_valid"]}
+
+
+def leg_e(port: int) -> dict:
+    base = f"http://example.test:{port}"
+    task = {"id": "realstack-e-preflight",
+            "url": f"{base}/catalog",
+            "allowed_domains": ["example.test"],
+            "chromium_args": _fixture_args(),
+            "preflight": True,
+            "steps": [
+                {"action": "goto", "url": f"{base}/catalog"},
+                {"action": "goto", "url": f"{base}/loginwall"},
+                {"action": "goto", "url": f"{base}/missing"}]}
+    r = Runner(task, _wd("e-preflight")).run()
+    verdicts = [row["verdict"] for row in r["receipts"]]
+    ok = (r["status"] == "preflight-blocked"
+          and "availability-automatable" in verdicts
+          and "availability-gated" in verdicts
+          and "availability-blocked" in verdicts
+          and r["receipt_chain_valid"])
+    return {"ok": ok, "status": r["status"],
+            "verdicts": verdicts,
+            "chain_valid": r["receipt_chain_valid"]}
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     port = serve()
     summary = {"a_live": leg_a(), "b_signature": leg_b(port),
-               "c_brandpin": leg_c()}
+               "c_brandpin": leg_c(), "d_switch": leg_d(port),
+               "e_preflight": leg_e(port)}
     (OUT / "summary.json").write_text(
         json.dumps(summary, indent=1) + "\n")
     print(json.dumps(summary, indent=1))
     return 0 if (summary["a_live"]["ok"]
-                 and summary["b_signature"]["ok"]) else 2
+                 and summary["b_signature"]["ok"]
+                 and summary["d_switch"]["ok"]
+                 and summary["e_preflight"]["ok"]) else 2
 
 
 if __name__ == "__main__":

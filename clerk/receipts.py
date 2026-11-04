@@ -15,7 +15,11 @@ from pathlib import Path
 
 VERDICTS = ("allowed", "blocked-allowlist", "contained-lookalike",
             "download-quarantined", "extracted", "approval-required",
-            "task-start", "task-complete", "task-failed")
+            "task-start", "task-complete", "task-failed",
+            "mode-switched", "vision-verified",
+            "switch-budget-exceeded",
+            "availability-automatable", "availability-gated",
+            "availability-blocked")
 
 
 def _iso_now() -> str:

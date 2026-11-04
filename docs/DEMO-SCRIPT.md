@@ -69,6 +69,28 @@ VO: "And the real Vultr sails through. Containment
 needs both signals — a lookalike domain AND a lure —
 so the guard fires on the impersonator, not the brand."
 
+## Beat 4b — The switch + the scout (fold-in addendum)
+
+Two mechanisms, one breath each — run legs D and E.
+
+Leg D (the switch): a page swaps its price mid-task and
+injects an instruction aimed at the agent. The receipt
+chain shows `mode-switched` with its trigger
+(`state-mismatch`), a `vision-verified`, and only then
+the extraction — of the verified current value.
+
+VO: "The page changed under the clerk — and the clerk
+noticed. Switching to vision-verify isn't a vibe; it's
+a row in a table, and the switch itself is receipted."
+
+Leg E (the scout): a three-step plan is pre-flighted —
+`availability-automatable`, `availability-gated`,
+`availability-blocked` — and the run halts on the
+blocked step before executing anything.
+
+VO: "Before the clerk accepts a job, it scouts it. The
+deliverable can be an honest no — with the wall named."
+
 ## Beat 5 — The room burns (2:30–3:00)
 
 On screen: receipts tail (profile destroyed), then
