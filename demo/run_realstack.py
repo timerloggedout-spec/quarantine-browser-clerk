@@ -72,7 +72,8 @@ def leg_a() -> dict:
             "chromium_args": ["--no-proxy-server"],
             "steps": [
                 {"action": "goto", "url": "https://example.com/"},
-                {"action": "extract", "fields": {"h1": "h1"}}]}
+                {"action": "extract",
+                 "fields": {"title": "title", "lead": "p"}}]}
     try:
         r = Runner(task, _wd("a-live")).run()
     except Exception as e:
