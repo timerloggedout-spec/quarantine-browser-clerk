@@ -1,0 +1,1 @@
+{"allowed_domains":["example.test"],"id":"t1-demo","steps":[{"action":"goto","url":"http://example.test/catalog"},{"action":"extract","fields":{"price":".price","stock":"#stock","title":"#title"}}],"url":"http://example.test/catalog"}
