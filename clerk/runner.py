@@ -160,6 +160,15 @@ class Runner:
             elif action == "extract":
                 for name, selector in (
                         step.get("fields") or {}).items():
+                    # real pages render asynchronously after
+                    # domcontentloaded — give each selector a
+                    # bounded wait before reading it as absent
+                    try:
+                        page.wait_for_selector(
+                            selector, state="attached",
+                            timeout=step.get("wait_ms", 5000))
+                    except Exception:
+                        pass
                     el = page.query_selector(selector)
                     self.extracted[name] = el.inner_text().strip() \
                         if el else None
