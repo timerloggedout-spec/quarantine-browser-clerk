@@ -81,8 +81,14 @@ def leg_a() -> dict:
         # job (ok=False) but legs B/C run so one dispatch
         # yields the full evidence set
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+    # the live example.com page carries no <h1> at all (probe,
+    # run 41805942661: 200 · title "Example Domain" · has_h1
+    # false in both proxy modes) — the original h1 target was
+    # the defect, not the clerk; title + lead paragraph are
+    # the page's real extraction surface
     ok = (r["status"] == "complete" and r["receipt_chain_valid"]
-          and bool(r["extracted"].get("h1")))
+          and bool(r["extracted"].get("title"))
+          and bool(r["extracted"].get("lead")))
     return {"ok": ok, "status": r["status"],
             "extracted": r["extracted"],
             "chain_valid": r["receipt_chain_valid"],
