@@ -1,0 +1,1 @@
+{"allowed_domains":["vultrr.test"],"id":"t2-signature","steps":[{"action":"goto","url":"http://vultrr.test/login"},{"action":"fill","selector":"input[name=password]","sensitive":true,"value":"never-typed"}],"url":"http://vultrr.test/login"}
