@@ -1,13 +1,10 @@
-# Quarantine Browser Clerk — staging tree
+# Quarantine Browser Clerk
 
-D2 (Vultr Agent Rush, C1·B) build, staged by the Swarm
-execution seat ahead of the repo landing
-(timerloggedout-spec/quarantine-browser-clerk, via the AppID
-lane). On the repo ref's arrival this tree becomes the first
-commit; the Vultr VM-per-task leg and the inference-driven
-planner slot into the seams named below.
+D2 (Vultr Agent Rush) — an agent browser clerk whose every
+act is contained, receipted, and disposable by construction.
+Repo: timerloggedout-spec/quarantine-browser-clerk.
 
-## What is proven in this tree (local harness, playwright)
+## What is proven (CI, Actions evidence)
 
 - **T1 core loop** (`tests/test_e2e.py::test_t1_core_loop`):
   task in → sandboxed browse → extracted data + hash-chained
@@ -20,6 +17,43 @@ planner slot into the seams named below.
   **contained-lookalike** → task-complete → profile
   destroyed; no credential is ever typed, no approval is
   even requested.
+- **T2 on the real stack** (`.github/workflows/demo.yml`,
+  run **41807278198** SUCCESS): leg A — live extraction from
+  a real allowlisted site (example.com: title + lead pulled,
+  chain valid); leg B — the signature containment fires
+  against the lookalike fixture host; leg C — the real
+  brand domain (vultr.com) is **not** contained (the brand
+  pin holds). Receipts for all three legs ship as the run's
+  `realstack-receipts` artifact.
+
+## How this project uses Vultr
+
+- **Vultr Cloud Compute — a disposable VM per task.**
+  The production sandbox is a throwaway `vhp-2c-4gb-amd`
+  instance ($0.033/h) provisioned per task through the
+  Vultr API, used for exactly one task, then **destroyed —
+  never stopped, never reused** (`clerk/vultr_vm.py`). A
+  compromised or contaminated session has nowhere to
+  persist: the machine it ran on ceases to exist. The leg
+  is armed in code and activates the moment the account's
+  API key is enabled; until then the identical runner
+  executes against a disposable local Chromium profile
+  (the design's stated fallback, and what CI exercises).
+- **Vultr Serverless Inference — the planner.**
+  `clerk/inference.py` is an OpenAI-compatible client for
+  `api.vultrinference.com/v1` (`VULTR_API_KEY` /
+  `VULTR_INFERENCE_MODEL`). The model proposes browsing
+  actions; every proposal still passes the route guard,
+  the lookalike assessment, and the human-approval gate —
+  **the guard sits below the model and is not
+  LLM-bypassable**. Without a key the runner stays in
+  deterministic steps mode and says so in its receipts.
+- **Why Vultr fits the design:** the containment model
+  wants compute that is cheap enough to throw away per
+  task and an inference endpoint the planner can call
+  without leaving the same cloud's trust and billing
+  surface. One account, one API key, two products: the
+  sandbox and the brain, with the guard between them.
 
 ## Containment model (enforced below the agent)
 
@@ -40,21 +74,11 @@ planner slot into the seams named below.
 - Receipts: `quarantine-clerk/receipt/v1`, hash-chained,
   tamper-evident (`ReceiptLog.verify`).
 
-## Seams for the live build
+## Submission packet
 
-- **Vultr VM-per-task**: the runner's sandbox is the local
-  disposable profile today (the spec's stated fallback);
-  the VM leg provisions a throwaway vhp-2c-4gb-amd per task
-  via the Vultr API and runs this same runner inside it,
-  destroying the VM after — never stopping it.
-- **Vultr Serverless Inference** (`clerk/inference.py`):
-  OpenAI-compatible client for api.vultrinference.com/v1;
-  key from `VULTR_API_KEY`, model from
-  `VULTR_INFERENCE_MODEL`. The LLM planner proposes actions;
-  every proposal still passes the route guard, the
-  lookalike assessment, and the approval gate — the guard
-  is not LLM-bypassable. Without a key the runner stays in
-  deterministic steps mode and says so in the receipts.
+`docs/SUBMISSION.md` (entry copy) · `docs/DEMO-SCRIPT.md`
+(the demo walkthrough, incl. the containment moment) ·
+`docs/SUBMISSION-PACKET.md` (artifact checklist + states).
 
 ## Run
 
