@@ -84,7 +84,42 @@ def leg_a() -> dict:
           and bool(r["extracted"].get("h1")))
     return {"ok": ok, "status": r["status"],
             "extracted": r["extracted"],
-            "chain_valid": r["receipt_chain_valid"]}
+            "chain_valid": r["receipt_chain_valid"],
+            "probe": _probe_example()}
+
+
+def _probe_example() -> dict:
+    """Diagnostic (non-clerk): what does this environment
+    actually serve for example.com, with and without the
+    proxy bypass — separates clerk behavior from serving."""
+    from playwright.sync_api import sync_playwright
+    out = {}
+    for label, args in (("no_proxy", ["--no-proxy-server"]),
+                        ("default_proxy", [])):
+        try:
+            with sync_playwright() as pw:
+                kw = {}
+                from clerk.runner import _chromium_executable
+                exe = _chromium_executable()
+                if exe:
+                    kw["executable_path"] = exe
+                b = pw.chromium.launch(headless=True, args=args,
+                                       **kw)
+                page = b.new_page()
+                resp = page.goto("https://example.com/",
+                                 wait_until="domcontentloaded",
+                                 timeout=30000)
+                page.wait_for_timeout(1500)
+                html = page.content()
+                out[label] = {
+                    "status": resp.status if resp else None,
+                    "url": page.url, "title": page.title(),
+                    "has_h1": "<h1" in html,
+                    "html_head": html[:160]}
+                b.close()
+        except Exception as e:
+            out[label] = {"error": f"{type(e).__name__}: {e}"}
+    return out
 
 
 def leg_b(port: int) -> dict:
