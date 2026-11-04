@@ -83,6 +83,11 @@ at the genuine site.
   signature containment · the brand pin, three receipt
   chains valid, shipped as the run artifact.
 - Unit + e2e suite: 8/8 (local harness + CI `ci.yml`).
+- Fold-ins (T3): the switch table + availability
+  pre-flight — `tests/test_foldins.py` (6 tests) and
+  demo legs D (switch) + E (preflight) in
+  `demo/run_realstack.py`; evidence = the fold-in PR's
+  green `ci` + `demo-realstack` runs.
 - Repo is public; every claim above maps to a file,
   a test, or a run named in `docs/SUBMISSION-PACKET.md`.
 

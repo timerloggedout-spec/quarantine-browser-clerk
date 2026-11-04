@@ -16,6 +16,7 @@ NOT_ESTABLISHED until its evidence exists.
 | 8 | Vultr Serverless Inference planner | ⏳ WIRED keyless — `clerk/inference.py`; deterministic mode receipted until the key lands |
 | 9 | Demo recording | NOT_ESTABLISHED — records at landing prep (script = item 4; CI artifact = fallback footage) |
 | 10 | Landing/submission form filing | NOT_ESTABLISHED — Nov 7, manager's hand w/ this packet |
+| 11 | Fold-ins: switch table (P3) + availability pre-flight (P4) | ⏳ BUILT on the fold-in PR — `clerk/switchtable.py` · `clerk/preflight.py` · tests/test_foldins.py (6 tests) · demo legs D+E; lands on merge + green realstack run |
 
 ## Honesty rails for the landing
 

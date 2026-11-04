@@ -74,6 +74,26 @@ Repo: timerloggedout-spec/quarantine-browser-clerk.
 - Receipts: `quarantine-clerk/receipt/v1`, hash-chained,
   tamper-evident (`ReceiptLog.verify`).
 
+## Folded-in mechanisms (T3, additive — opt-in per task)
+
+- **The switch table** (`clerk/switchtable.py`): the clerk
+  runs DOM-first; WHEN it escalates to vision-verify is a
+  decision table, not a judgment call — consequential
+  action class · sub-threshold hidden-instruction signals ·
+  a step's declared expectation no longer matching the
+  live page (state-mismatch: the page changed under the
+  clerk). Every switch is receipted with its trigger and
+  bounded by a per-task switch budget. Verification binds
+  the inference client when keyed, else the human seam —
+  receipted either way. Opt in: `"switch_table": true`.
+- **Availability pre-flight** (`clerk/preflight.py`): with
+  `"preflight": true`, the plan is scouted before it is
+  executed — one availability receipt per step
+  (automatable · gated · blocked, the exact wall named).
+  A blocked step halts the run; the report is the
+  deliverable — an honest "no" with evidence, before a
+  workflow is built on a step that cannot run.
+
 ## Submission packet
 
 `docs/SUBMISSION.md` (entry copy) · `docs/DEMO-SCRIPT.md`
