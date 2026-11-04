@@ -1,0 +1,26 @@
+name: demo-realstack
+# T2 evidence: the clerk's core loop + signature containment
+# running on the real stack (Actions Chromium + live egress).
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  realstack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: playwright install --with-deps chromium
+      - name: Real-stack demo (legs A+B gate; C recorded)
+        run: python demo/run_realstack.py
+      - name: Upload receipts + summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: realstack-receipts
+          path: out/
