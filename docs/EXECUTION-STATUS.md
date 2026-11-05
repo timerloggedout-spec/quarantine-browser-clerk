@@ -29,7 +29,7 @@
 ## Production gaps — do not overclaim
 
 1. **Web app:** controlled FastAPI UI/API is implemented in PR [#11](https://github.com/timerloggedout-spec/quarantine-browser-clerk/pull/11); it accepts HTTPS extraction tasks only and requires a strong demo token. It is not deployed.
-2. **Sandbox:** PR #11 adds per-task Docker containers, an internal network, and an allowlist-only HTTPS proxy. This code has not yet been deployed or host-firewall validated on Vultr. The old per-task VM helpers are not used by this Docker-host architecture.
+2. **Sandbox:** PR #11 adds per-task Docker containers sharing a short-lived proxy network namespace; UID firewall rules restrict browser egress to the local proxy, which enforces HTTPS allowlists and public-IP DNS validation. This code has not yet been deployed or host-firewall validated on Vultr. The old per-task VM helpers are not used by this Docker-host architecture.
 3. **Inference:** the OpenAI-compatible client is used for optional vision verification only; no action-planning integration exists.
 4. **Deployment:** no Vultr host deployment, public App URL, or real cloud task/teardown evidence is recorded.
 5. **AppID:** Proctor identity is issued and a manifest package is proposed in termux-monorepo PR #5022; the App itself is not created/installed/adopted yet.
