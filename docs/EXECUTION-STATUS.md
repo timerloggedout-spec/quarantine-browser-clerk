@@ -9,10 +9,10 @@
 ## Artifact identity and provenance
 
 - Entry repository: [timerloggedout-spec/quarantine-browser-clerk](https://github.com/timerloggedout-spec/quarantine-browser-clerk), public, repository ID 1445293810.
-- Current main SHA at refresh: `d3f0ffbf03f6f89515d0575afc4b09eda41be15e`.
+- Current main SHA at refresh: `1f6c6345a85d7cd96a9a5e5acfae7255ccd4d965`.
 - Mainline PRs: #2 T1/T2 core; #3 real-stack demo; #4 submission prep; #5 media assets; #6 P3/P4 fold-ins. All are merged.
 - Latest main validation: CI run 41822618113 SUCCESS; demo-realstack run 41822618119 SUCCESS.
-- Current maintenance: PR #8 adds unconditional Playwright context teardown on exceptional exit; its checks are separate from mainline evidence until they complete and merge.
+- Security maintenance: PR [#8](https://github.com/timerloggedout-spec/quarantine-browser-clerk/pull/8) merged as `1f6c6345a85d7cd96a9a5e5acfae7255ccd4d965`; the persistent Playwright context now closes in a `finally` block on both normal and exceptional exits. CI run [42129363148](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/42129363148) and demo-realstack run [42129363285](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/42129363285) both passed.
 - No AMD match source files, test results, or submission records are copied into this D2 repository.
 
 ## What is implemented and evidenced
