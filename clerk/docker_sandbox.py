@@ -116,6 +116,7 @@ class DockerSandbox:
                 "run", "--detach", "--label", "com.timerloggedout-spec.qbc=true", "--name", proxy_name,
                 "--network", "bridge", "--read-only",
                 "--tmpfs", "/tmp:rw,nosuid,nodev,size=16m",
+                "--tmpfs", "/run:rw,nosuid,nodev,size=16m",
                 "--cap-drop", "ALL",
                 "--cap-add", "NET_ADMIN", "--cap-add", "SETUID",
                 "--cap-add", "SETGID",
