@@ -13,6 +13,7 @@ import os
 import select
 import socket
 import socketserver
+import subprocess
 from urllib.parse import urlsplit
 
 from .allowlist import Allowlist
@@ -139,7 +140,37 @@ class _ThreadedServer(socketserver.ThreadingTCPServer):
     daemon_threads = True
 
 
+def configure_egress_firewall() -> None:
+    """Allow browser UID only to reach the local proxy listener.
+
+    The proxy UID alone may open external sockets. The browser shares this
+    network namespace but has a different UID and no NET_ADMIN capability.
+    """
+    rules = [
+        ["iptables", "-F", "INPUT"],
+        ["iptables", "-F", "OUTPUT"],
+        ["iptables", "-A", "INPUT", "-i", "lo", "-j", "ACCEPT"],
+        ["iptables", "-A", "INPUT", "-m", "conntrack",
+         "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+        ["iptables", "-A", "INPUT", "-j", "DROP"],
+        ["iptables", "-A", "OUTPUT", "-o", "lo", "-p", "tcp",
+         "--dport", "3128", "-j", "ACCEPT"],
+        ["iptables", "-A", "OUTPUT", "-m", "owner",
+         "--uid-owner", "10002", "-j", "ACCEPT"],
+        ["iptables", "-A", "OUTPUT", "-j", "DROP"],
+    ]
+    for rule in rules:
+        subprocess.run(
+            rule, check=True, stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE)
+
+
 def main() -> int:
+    if os.geteuid() != 0:
+        raise SystemExit("egress proxy must start as root to install namespace firewall")
+    configure_egress_firewall()
+    os.setgid(10002)
+    os.setuid(10002)
     raw = os.environ.get("QBC_ALLOWED_DOMAINS", "[]")
     domains = json.loads(raw)
     if not isinstance(domains, list) or not domains:
