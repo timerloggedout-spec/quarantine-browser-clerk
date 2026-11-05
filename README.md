@@ -36,10 +36,12 @@ execution path. The deployment evidence remains separate:
   does not expose arbitrary clicks, credential entry, downloads, or browser
   arguments.
 - **Task isolation:** `clerk/docker_sandbox.py` creates a fresh browser
-  container on a per-task internal Docker network and a short-lived egress
-  proxy. The proxy permits allowlisted HTTPS/443 CONNECT only and rejects
-  non-public DNS answers. The browser container has a read-only root, no
-  added capabilities, resource limits, and only task/result mounts.
+  container that shares a short-lived proxy container's network namespace.
+  Namespace firewall rules allow browser UID 10001 only to reach loopback
+  TCP/3128; only proxy UID 10002 can open external sockets. The proxy permits
+  allowlisted HTTPS/443 CONNECT only and rejects non-public DNS answers. The
+  browser container has a read-only root, no added capabilities, resource
+  limits, and only task/result mounts.
 - **Vultr Cloud Compute:** the intended deployment is this web service on a
   Vultr Cloud Compute host, with each task isolated in a fresh Docker
   container. The low-level `clerk/vultr_vm.py` provision/destroy helpers are
@@ -49,10 +51,11 @@ execution path. The deployment evidence remains separate:
   OpenAI-compatible client used for optional P3 vision verification only;
   it does not generate the browsing plan. The web API currently builds
   deterministic `goto` + `extract` steps.
-- **Network boundary:** the internal Docker network and egress proxy are
-  implemented, but host-firewall isolation and the full deployment recipe
-  still require a real Vultr-host validation. The web app fails closed when
-  Docker is unavailable; it never falls back to an unsandboxed browser.
+- **Network boundary:** the shared proxy namespace and UID firewall are
+  implemented. Host-firewall protection for host management services and
+  the full deployment recipe still require real Vultr-host validation. The
+  web app fails closed when Docker is unavailable; it never falls back to an
+  unsandboxed browser.
 - **Credentials:** no Vultr API/inference key or `QBC_DEMO_TOKEN` is recorded
   in this repository. Keep all runtime secrets in approved custody; never
   commit them.
