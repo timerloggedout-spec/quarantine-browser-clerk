@@ -211,22 +211,26 @@ class Runner:
                     accept_downloads=True,
                     args=list(self.task.get("chromium_args") or []),
                     **launch_kw)
-                ctx.route("**/*", self._route_guard)
-                page = ctx.pages[0] if ctx.pages else ctx.new_page()
-                page.on("download", self._on_download)
-                if self.task.get("preflight"):
-                    # P4 fold-in: scout the plan before
-                    # executing it; blocked steps halt the
-                    # run — the availability report is the
-                    # deliverable.
-                    self.preflight_report = run_preflight(
-                        page, self.task, self.log)
-                    if self.preflight_report["blocked"] and \
-                            not self.task.get("proceed_anyway"):
-                        self._status = "preflight-blocked"
-                if self._status == "complete":
-                    self._drive(page)
-                ctx.close()
+                try:
+                    ctx.route("**/*", self._route_guard)
+                    page = ctx.pages[0] if ctx.pages else ctx.new_page()
+                    page.on("download", self._on_download)
+                    if self.task.get("preflight"):
+                        # P4 fold-in: scout the plan before
+                        # executing it; blocked steps halt the
+                        # run — the availability report is the
+                        # deliverable.
+                        self.preflight_report = run_preflight(
+                            page, self.task, self.log)
+                        if self.preflight_report["blocked"] and \
+                                not self.task.get("proceed_anyway"):
+                            self._status = "preflight-blocked"
+                    if self._status == "complete":
+                        self._drive(page)
+                finally:
+                    # A failed step must not leave a live browser
+                    # process behind after its profile is removed.
+                    ctx.close()
             self.log.emit("task", "task-complete",
                           detail=f"status={self._status} "
                                  f"extracted={sorted(self.extracted)}")
