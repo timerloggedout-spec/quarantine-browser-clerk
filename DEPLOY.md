@@ -47,7 +47,7 @@ export QBC_DEMO_TOKEN='<secret from approved secret custody>'
 /opt/qbc-venv/bin/uvicorn web.app:app --host 127.0.0.1 --port 8000
 ```
 
-Place a TLS reverse proxy in front of the service and expose only HTTPS.
+Run a single Uvicorn worker (startup recovery owns the QBC Docker namespace). Place a TLS reverse proxy in front of the service and expose only HTTPS.
 Keep Docker's remote API disabled. Restrict SSH to the operator's management
 path. Do not expose port 3128 or any task network to the public internet. Configure the host firewall to deny task-network access to host management services and to permit only the proxy sidecar's intended egress path; validate this from inside a disposable task before opening the public demo.
 
@@ -59,8 +59,9 @@ path. Do not expose port 3128 or any task network to the public internet. Config
   privileges, bounded memory/CPU/PIDs, isolated internal network.
 - Proxy: no capabilities, read-only root filesystem, bounded memory/CPU/PIDs.
 - The app requires `QBC_DEMO_TOKEN`; the task API returns 503 when it is
-  absent. Docker startup failure is a task failure; there is no local-browser
-  fallback.
+  absent. Startup recovery removes only QBC-labelled containers/networks and
+  stale `qbc-*` task workspaces, then marks interrupted DB tasks failed.
+  Docker startup failure is a task failure; there is no local-browser fallback.
 - Only public HTTPS destinations matching the allowlist are permitted by the
   proxy. DNS answers containing private/reserved addresses are rejected.
 
