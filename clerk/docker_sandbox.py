@@ -85,7 +85,6 @@ class DockerSandbox:
             raise SandboxExecutionError("task allowlist is empty")
         self.work_root.mkdir(parents=True, exist_ok=True)
         token = uuid.uuid4().hex[:12]
-        network = f"qbc-task-{token}"
         proxy_name = f"qbc-proxy-{token}"
         browser_name = f"qbc-browser-{token}"
         root = Path(tempfile.mkdtemp(
@@ -105,27 +104,25 @@ class DockerSandbox:
 
         task_path = task_dir / "task.json"
         task_for_container = dict(task)
-        task_for_container["proxy_server"] = "http://qbc-proxy:3128"
+        task_for_container["proxy_server"] = "http://127.0.0.1:3128"
         task_path.write_text(json.dumps(task_for_container))
         os.chmod(task_path, 0o400)
         if os.geteuid() == 0:
             os.chown(task_path, uid, gid)
 
         try:
-            self._call(["network", "create", "--label", "com.timerloggedout-spec.qbc=true", "--internal", network])
             self._call([
                 "run", "--detach", "--label", "com.timerloggedout-spec.qbc=true", "--name", proxy_name,
                 "--network", "bridge", "--read-only",
                 "--tmpfs", "/tmp:rw,nosuid,nodev,size=16m",
                 "--cap-drop", "ALL",
+                "--cap-add", "NET_ADMIN", "--cap-add", "SETUID",
+                "--cap-add", "SETGID",
                 "--security-opt", "no-new-privileges",
                 "--pids-limit", "64", "--memory", "128m",
-                "--cpus", "0.25", "--user", "10001:10001",
+                "--cpus", "0.25", "--user", "0:0",
                 "--env", "QBC_ALLOWED_DOMAINS=" + json.dumps(domains),
                 self.image, "python", "-m", "clerk.egress_proxy"])
-            self._call([
-                "network", "connect", "--alias", "qbc-proxy",
-                network, proxy_name])
 
             # Wait for the proxy listener before starting Chromium.
             ready = False
@@ -144,7 +141,7 @@ class DockerSandbox:
 
             result = self._call([
                 "run", "--rm", "--label", "com.timerloggedout-spec.qbc=true", "--name", browser_name,
-                "--network", network, "--read-only",
+                "--network", f"container:{proxy_name}", "--read-only",
                 "--tmpfs", "/tmp:rw,nosuid,nodev,size=1g",
                 "--cap-drop", "ALL",
                 "--security-opt", "no-new-privileges",
@@ -174,5 +171,4 @@ class DockerSandbox:
         finally:
             self._call(["rm", "-f", browser_name], timeout=15, check=False)
             self._call(["rm", "-f", proxy_name], timeout=15, check=False)
-            self._call(["network", "rm", network], timeout=15, check=False)
             shutil.rmtree(root, ignore_errors=True)
