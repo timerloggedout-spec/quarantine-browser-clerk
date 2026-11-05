@@ -143,27 +143,34 @@ class _ThreadedServer(socketserver.ThreadingTCPServer):
 def configure_egress_firewall() -> None:
     """Allow browser UID only to reach the local proxy listener.
 
-    The proxy UID alone may open external sockets. The browser shares this
-    network namespace but has a different UID and no NET_ADMIN capability.
+    Apply the same policy to IPv4 and IPv6. Browser UID 10001 can use only
+    loopback TCP/3128; proxy UID 10002 can use DNS/53 and HTTPS/443 only.
     """
-    rules = [
-        ["iptables", "-F", "INPUT"],
-        ["iptables", "-F", "OUTPUT"],
-        ["iptables", "-A", "INPUT", "-i", "lo", "-j", "ACCEPT"],
-        ["iptables", "-A", "INPUT", "-m", "conntrack",
-         "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
-        ["iptables", "-A", "INPUT", "-j", "DROP"],
-        ["iptables", "-A", "OUTPUT", "-o", "lo", "-p", "tcp",
-         "--dport", "3128", "-j", "ACCEPT"],
-        ["iptables", "-A", "OUTPUT", "-m", "owner",
-         "--uid-owner", "10002", "-j", "ACCEPT"],
-        ["iptables", "-A", "OUTPUT", "-j", "DROP"],
-    ]
-    for rule in rules:
-        subprocess.run(
-            rule, check=True, stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE)
-
+    for binary in ("iptables", "ip6tables"):
+        rules = [
+            [binary, "-F", "INPUT"],
+            [binary, "-F", "OUTPUT"],
+            [binary, "-A", "INPUT", "-i", "lo", "-j", "ACCEPT"],
+            [binary, "-A", "INPUT", "-m", "conntrack",
+             "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+            [binary, "-A", "INPUT", "-j", "DROP"],
+            [binary, "-A", "OUTPUT", "-o", "lo", "-p", "tcp",
+             "--dport", "3128", "-j", "ACCEPT"],
+            [binary, "-A", "OUTPUT", "-m", "owner",
+             "--uid-owner", "10002", "-p", "tcp",
+             "--dport", "443", "-j", "ACCEPT"],
+            [binary, "-A", "OUTPUT", "-m", "owner",
+             "--uid-owner", "10002", "-p", "udp",
+             "--dport", "53", "-j", "ACCEPT"],
+            [binary, "-A", "OUTPUT", "-m", "owner",
+             "--uid-owner", "10002", "-p", "tcp",
+             "--dport", "53", "-j", "ACCEPT"],
+            [binary, "-A", "OUTPUT", "-j", "DROP"],
+        ]
+        for rule in rules:
+            subprocess.run(
+                rule, check=True, stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE)
 
 def main() -> int:
     if os.geteuid() != 0:
