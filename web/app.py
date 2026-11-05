@@ -23,6 +23,7 @@ from clerk.docker_sandbox import DockerSandbox, SandboxExecutionError
 
 DB_PATH = Path(os.environ.get(
     "QBC_DB_PATH", "/tmp/qbc-tasks.sqlite3"))
+MAX_ACTIVE_TASKS = max(1, int(os.environ.get("QBC_MAX_ACTIVE_TASKS", "1")))
 INDEX_PATH = Path(__file__).parent / "static" / "index.html"
 
 
@@ -226,7 +227,7 @@ def list_tasks(_auth: None = Depends(require_demo_token)):
 def create_task(payload: TaskRequest, background: BackgroundTasks,
                 _auth: None = Depends(require_demo_token)):
     with TASK_CREATION_LOCK:
-        if STORE.active_count() >= 2:
+        if STORE.active_count() >= MAX_ACTIVE_TASKS:
             raise HTTPException(status_code=429, detail="Task capacity reached")
         task_id = uuid.uuid4().hex
         task = payload.to_task(task_id)
