@@ -20,9 +20,13 @@
 
 ## Build the sandbox image
 
-On the Vultr host, install Docker Engine and Python 3.12, then:
+On the Vultr host, install Docker Engine and Python 3.12. Install the
+application dependencies in a dedicated virtual environment, then build the
+sandbox image:
 
 ```sh
+python3 -m venv /opt/qbc-venv
+/opt/qbc-venv/bin/pip install -r requirements.txt
 docker build -t qbc-sandbox:latest .
 ```
 
@@ -40,12 +44,12 @@ export QBC_DB_PATH=/var/lib/qbc/tasks.sqlite3
 export QBC_WORK_ROOT=/var/lib/qbc/sandboxes
 export QBC_SANDBOX_IMAGE=qbc-sandbox:latest
 export QBC_DEMO_TOKEN='<secret from approved secret custody>'
-uvicorn web.app:app --host 127.0.0.1 --port 8000
+/opt/qbc-venv/bin/uvicorn web.app:app --host 127.0.0.1 --port 8000
 ```
 
 Place a TLS reverse proxy in front of the service and expose only HTTPS.
 Keep Docker's remote API disabled. Restrict SSH to the operator's management
-path. Do not expose port 3128 or any task network to the public internet.
+path. Do not expose port 3128 or any task network to the public internet. Configure the host firewall to deny task-network access to host management services and to permit only the proxy sidecar's intended egress path; validate this from inside a disposable task before opening the public demo.
 
 ## Runtime limits and fail-closed behavior
 
