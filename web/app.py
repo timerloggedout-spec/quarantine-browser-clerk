@@ -9,7 +9,7 @@ import secrets
 import sqlite3
 import uuid
 from threading import Lock
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -180,14 +180,18 @@ class TaskStore:
 
 STORE = TaskStore(DB_PATH)
 TASK_CREATION_LOCK = Lock()
-app = FastAPI(title="Quarantine Browser Clerk", version="0.1.0")
 
 
-@app.on_event("startup")
-def recover_previous_tasks():
+@asynccontextmanager
+async def lifespan(_app):
     # One Uvicorn worker is required: startup cleanup owns this Docker namespace.
     DockerSandbox().cleanup_orphans()
     STORE.mark_interrupted()
+    yield
+
+
+app = FastAPI(title="Quarantine Browser Clerk", version="0.1.0",
+              lifespan=lifespan)
 
 
 @app.middleware("http")
