@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -20,7 +20,7 @@ from clerk.allowlist import Allowlist, host_of
 from clerk.docker_sandbox import DockerSandbox, SandboxExecutionError
 
 DB_PATH = Path(os.environ.get(
-    "QBC_DB_PATH", "/var/lib/qbc/tasks.sqlite3"))
+    "QBC_DB_PATH", "/tmp/qbc-tasks.sqlite3"))
 INDEX_PATH = Path(__file__).parent / "static" / "index.html"
 
 
@@ -185,7 +185,7 @@ def execute_task(task_id: str, task: dict):
         result = DockerSandbox().run(task)
         STORE.update(task_id, result.get("status", "complete"),
                      result=result)
-    except (SandboxExecutionError, Exception) as exc:
+    except Exception as exc:
         STORE.update(task_id, "failed",
                      error=f"{type(exc).__name__}: {str(exc)[:500]}")
 
@@ -201,15 +201,13 @@ def health():
 
 
 @app.get("/api/tasks")
-def list_tasks(_auth: None = Header(default=None, alias="X-QBC-Demo-Token")):
-    require_demo_token(_auth or "")
+def list_tasks(_auth: None = Depends(require_demo_token)):
     return {"tasks": STORE.list()}
 
 
 @app.post("/api/tasks", status_code=202)
 def create_task(payload: TaskRequest, background: BackgroundTasks,
-                _auth: None = Header(default=None, alias="X-QBC-Demo-Token")):
-    require_demo_token(_auth or "")
+                _auth: None = Depends(require_demo_token)):
     if STORE.active_count() >= 2:
         raise HTTPException(status_code=429, detail="Task capacity reached")
     task_id = uuid.uuid4().hex
@@ -221,8 +219,7 @@ def create_task(payload: TaskRequest, background: BackgroundTasks,
 
 @app.get("/api/tasks/{task_id}")
 def get_task(task_id: str,
-             _auth: None = Header(default=None, alias="X-QBC-Demo-Token")):
-    require_demo_token(_auth or "")
+             _auth: None = Depends(require_demo_token)):
     row = STORE.get(task_id)
     if not row:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -236,8 +233,7 @@ def get_task(task_id: str,
 
 @app.get("/api/tasks/{task_id}/receipts")
 def get_receipts(task_id: str,
-                 _auth: None = Header(default=None, alias="X-QBC-Demo-Token")):
-    require_demo_token(_auth or "")
+                 _auth: None = Depends(require_demo_token)):
     row = STORE.get(task_id)
     if not row:
         raise HTTPException(status_code=404, detail="Task not found")
