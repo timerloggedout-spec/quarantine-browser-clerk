@@ -61,12 +61,15 @@ at the genuine site.
 
 ## Production execution status
 
-The current repository proves the browser-clerk mechanisms on a local
-disposable Chromium profile and in GitHub Actions. It does **not** yet claim
-a live Vultr sandbox deployment.
+The current repository now includes a controlled FastAPI web UI/API and a
+per-task Docker sandbox with an allowlist-only HTTPS proxy (PR #11). GitHub
+Actions still proves the browser mechanisms on its hosted runner. The web
+app and Docker sandbox have **not** yet been deployed or validated on a Vultr
+host, and no public App URL is claimed.
 
-- `clerk/vultr_vm.py` currently contains low-level Vultr API helpers;
-  the runner does not yet invoke them or execute tasks remotely.
+- The Docker sandbox is intended to run on a Vultr Cloud Compute host; the
+  low-level `clerk/vultr_vm.py` helpers are not used by this host/container
+  architecture.
 - `clerk/inference.py` is an OpenAI-compatible client used for optional
   P3 vision verification; it is not yet an action planner.
 - No public Vultr-hosted App URL or key-bearing cloud run is recorded.
