@@ -52,3 +52,30 @@ def test_docker_sandbox_uses_internal_network_and_cleans_up(
     assert any("rm -f" in c for c in commands)
     assert task_payloads[0]["proxy_server"] == "http://qbc-proxy:3128"
     assert list(tmp_path.iterdir()) == []
+
+
+def test_cleanup_orphans_is_scoped_to_qbc_labels(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(list(args))
+        if args[1:3] == ["ps", "-aq"]:
+            return subprocess.CompletedProcess(
+                args, 0, stdout="browser-id\\nproxy-id\\n", stderr="")
+        if args[1:4] == ["network", "ls", "-q"]:
+            return subprocess.CompletedProcess(
+                args, 0, stdout="network-id\\n", stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr("clerk.docker_sandbox.shutil.which",
+                        lambda _name: "/usr/bin/docker")
+    monkeypatch.setattr("clerk.docker_sandbox.subprocess.run", fake_run)
+
+    DockerSandbox(work_root=tmp_path).cleanup_orphans()
+
+    joined = [" ".join(call) for call in calls]
+    assert any("label=com.timerloggedout-spec.qbc=true" in call
+               for call in joined)
+    assert any("rm -f browser-id" in call for call in joined)
+    assert any("rm -f proxy-id" in call for call in joined)
+    assert any("network rm network-id" in call for call in joined)
