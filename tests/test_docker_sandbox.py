@@ -79,3 +79,12 @@ def test_cleanup_orphans_is_scoped_to_qbc_labels(monkeypatch, tmp_path):
     assert any("rm -f browser-id" in call for call in joined)
     assert any("rm -f proxy-id" in call for call in joined)
     assert any("network rm network-id" in call for call in joined)
+    stale = tmp_path / "qbc-stale-task"
+    stale.mkdir()
+    (stale / "partial.json").write_text("{}")
+    unrelated = tmp_path / "other-service"
+    unrelated.mkdir()
+    DockerSandbox(work_root=tmp_path).cleanup_orphans()
+    assert not stale.exists()
+    assert unrelated.exists()
+
