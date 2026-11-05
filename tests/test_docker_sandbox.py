@@ -61,10 +61,10 @@ def test_cleanup_orphans_is_scoped_to_qbc_labels(monkeypatch, tmp_path):
         calls.append(list(args))
         if args[1:3] == ["ps", "-aq"]:
             return subprocess.CompletedProcess(
-                args, 0, stdout="browser-id\\nproxy-id\\n", stderr="")
+                args, 0, stdout="browser-id\nproxy-id\n", stderr="")
         if args[1:4] == ["network", "ls", "-q"]:
             return subprocess.CompletedProcess(
-                args, 0, stdout="network-id\\n", stderr="")
+                args, 0, stdout="network-id\n", stderr="")
         return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
 
     monkeypatch.setattr("clerk.docker_sandbox.shutil.which",
