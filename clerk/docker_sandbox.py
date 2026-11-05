@@ -129,7 +129,7 @@ class DockerSandbox:
             ready = False
             for _ in range(40):
                 probe = self._call([
-                    "exec", proxy_name, "python", "-c",
+                    "exec", "--user", "10002:10002", proxy_name, "python", "-c",
                     "import socket; s=socket.create_connection(('127.0.0.1',3128),1); s.close()"],
                     timeout=3, check=False)
                 if probe.returncode == 0:
