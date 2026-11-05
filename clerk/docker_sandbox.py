@@ -51,6 +51,12 @@ class DockerSandbox:
     def run(self, task: dict) -> dict:
         if not shutil.which(self.docker):
             raise SandboxExecutionError("Docker CLI is not installed")
+        domains = list(task.get("allowed_domains") or [])
+        start_host = host_of(task.get("url", ""))
+        if start_host and start_host not in domains:
+            domains.append(start_host)
+        if not domains:
+            raise SandboxExecutionError("task allowlist is empty")
         self.work_root.mkdir(parents=True, exist_ok=True)
         token = uuid.uuid4().hex[:12]
         network = f"qbc-task-{token}"
@@ -78,13 +84,6 @@ class DockerSandbox:
         os.chmod(task_path, 0o400)
         if os.geteuid() == 0:
             os.chown(task_path, uid, gid)
-
-        domains = list(task.get("allowed_domains") or [])
-        start_host = host_of(task.get("url", ""))
-        if start_host and start_host not in domains:
-            domains.append(start_host)
-        if not domains:
-            raise SandboxExecutionError("task allowlist is empty")
 
         try:
             self._call(["network", "create", "--internal", network])
