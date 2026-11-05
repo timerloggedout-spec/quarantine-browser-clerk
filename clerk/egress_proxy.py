@@ -169,6 +169,7 @@ def main() -> int:
     if os.geteuid() != 0:
         raise SystemExit("egress proxy must start as root to install namespace firewall")
     configure_egress_firewall()
+    os.setgroups([])
     os.setgid(10002)
     os.setuid(10002)
     raw = os.environ.get("QBC_ALLOWED_DOMAINS", "[]")
