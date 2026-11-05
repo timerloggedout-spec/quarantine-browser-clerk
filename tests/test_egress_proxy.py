@@ -115,9 +115,14 @@ def test_proxy_firewall_only_allows_browser_to_local_proxy(monkeypatch):
     assert ["iptables", "-F", "OUTPUT"] in calls
     assert ["iptables", "-A", "OUTPUT", "-o", "lo", "-p", "tcp",
             "--dport", "3128", "-j", "ACCEPT"] in calls
-    assert ["iptables", "-A", "OUTPUT", "-m", "owner",
-            "--uid-owner", "10002", "-j", "ACCEPT"] in calls
-    assert ["iptables", "-A", "OUTPUT", "-j", "DROP"] in calls
+    for binary in ("iptables", "ip6tables"):
+        assert [binary, "-A", "OUTPUT", "-m", "owner",
+                "--uid-owner", "10002", "-p", "tcp",
+                "--dport", "443", "-j", "ACCEPT"] in calls
+        assert [binary, "-A", "OUTPUT", "-m", "owner",
+                "--uid-owner", "10002", "-p", "udp",
+                "--dport", "53", "-j", "ACCEPT"] in calls
+        assert [binary, "-A", "OUTPUT", "-j", "DROP"] in calls
 
 
 def test_proxy_main_drops_privileges_before_serving(monkeypatch):
