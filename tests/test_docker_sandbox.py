@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 
 from clerk.docker_sandbox import DockerSandbox
 
@@ -7,6 +8,7 @@ from clerk.docker_sandbox import DockerSandbox
 def test_docker_sandbox_uses_internal_network_and_cleans_up(
         tmp_path, monkeypatch):
     calls = []
+    task_payloads = []
 
     def fake_which(_name):
         return "/usr/bin/docker"
@@ -14,6 +16,11 @@ def test_docker_sandbox_uses_internal_network_and_cleans_up(
     def fake_run(args, **kwargs):
         calls.append(list(args))
         if "clerk.cli" in args:
+            mount = next(item for item in args
+                         if item.startswith("type=bind,src=")
+                         and "/task/task.json" in item)
+            source = mount.split("src=", 1)[1].split(",dst=", 1)[0]
+            task_payloads.append(json.loads(Path(source).read_text()))
             return subprocess.CompletedProcess(
                 args, 0,
                 stdout=json.dumps({
@@ -41,7 +48,7 @@ def test_docker_sandbox_uses_internal_network_and_cleans_up(
                and "no-new-privileges" in c for c in commands)
     assert any("network connect --alias qbc-proxy" in c
                for c in commands)
-    assert any("qbc-proxy:3128" in c for c in commands)
     assert any("network rm" in c for c in commands)
     assert any("rm -f" in c for c in commands)
+    assert task_payloads[0]["proxy_server"] == "http://qbc-proxy:3128"
     assert list(tmp_path.iterdir()) == []
