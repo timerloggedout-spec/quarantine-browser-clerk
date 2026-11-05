@@ -55,6 +55,36 @@ Repo: timerloggedout-spec/quarantine-browser-clerk.
   surface. One account, one API key, two products: the
   sandbox and the brain, with the guard between them.
 
+
+## Web application and Docker sandbox
+
+The controlled web surface lives in `web/app.py` and
+`web/static/index.html`. It accepts HTTPS URLs plus CSS extraction fields
+only; it does not expose arbitrary browser actions, credentials, or download
+execution. The task API requires a strong `QBC_DEMO_TOKEN`.
+
+Each submitted task runs in a fresh Docker browser container on an internal
+network. The only intended egress path is a short-lived HTTPS CONNECT proxy
+that enforces the task allowlist and rejects non-public DNS answers. The
+browser container has a read-only root filesystem, no added capabilities,
+bounded CPU/memory/PIDs, and only task/result mounts. Docker startup failure
+fails the task; there is no unsandboxed local fallback.
+
+Build and run instructions: [DEPLOY.md](DEPLOY.md). The web app and sandbox
+implementation are now in the codebase, but a Vultr-hosted deployment and
+host-firewall validation are still external gates; no public App URL is
+claimed yet.
+
+Local service entry point (after building `qbc-sandbox:latest`):
+
+```sh
+export QBC_DEMO_TOKEN="$(openssl rand -hex 32)"
+export QBC_DB_PATH=/tmp/qbc-tasks.sqlite3
+export QBC_WORK_ROOT=/tmp/qbc-sandboxes
+uvicorn web.app:app --host 127.0.0.1 --port 8000
+```
+
+
 ## Containment model (enforced below the agent)
 
 - Disposable Chromium profile per task (deleted after);
