@@ -5,7 +5,7 @@ from pathlib import Path
 from clerk.docker_sandbox import DockerSandbox
 
 
-def test_docker_sandbox_uses_internal_network_and_cleans_up(
+def test_docker_sandbox_uses_uid_firewalled_proxy_namespace_and_cleans_up(
         tmp_path, monkeypatch):
     calls = []
     task_payloads = []
@@ -43,14 +43,15 @@ def test_docker_sandbox_uses_internal_network_and_cleans_up(
 
     assert result["status"] == "complete"
     commands = [" ".join(c) for c in calls]
-    assert any("network create --label com.timerloggedout-spec.qbc=true --internal" in c for c in commands)
     assert any("--read-only" in c and "--cap-drop ALL" in c
                and "no-new-privileges" in c for c in commands)
-    assert any("network connect --alias qbc-proxy" in c
-               for c in commands)
-    assert any("network rm" in c for c in commands)
     assert any("rm -f" in c for c in commands)
-    assert task_payloads[0]["proxy_server"] == "http://qbc-proxy:3128"
+    assert any("clerk.egress_proxy" in c and "--cap-add NET_ADMIN" in c
+               and "--cap-add SETUID" in c and "--user 0:0" in c
+               for c in commands)
+    assert any("--network container:qbc-proxy-" in c
+               for c in commands)
+    assert task_payloads[0]["proxy_server"] == "http://127.0.0.1:3128"
     assert list(tmp_path.iterdir()) == []
 
 
