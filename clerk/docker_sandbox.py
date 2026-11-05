@@ -48,6 +48,28 @@ class DockerSandbox:
                 f"Docker command failed ({result.returncode}): {detail}")
         return result
 
+    def cleanup_orphans(self) -> None:
+        """Remove only QBC-labelled containers and task networks on startup."""
+        if not shutil.which(self.docker):
+            raise SandboxExecutionError("Docker CLI is not installed")
+        info = self._call(["info"], timeout=15, check=False)
+        if info.returncode != 0:
+            raise SandboxExecutionError("Docker daemon is unavailable")
+        containers = self._call([
+            "ps", "-aq", "--filter",
+            "label=com.timerloggedout-spec.qbc=true"], check=False)
+        for container_id in (containers.stdout or "").splitlines():
+            if container_id.strip():
+                self._call(["rm", "-f", container_id.strip()],
+                           timeout=15, check=False)
+        networks = self._call([
+            "network", "ls", "-q", "--filter",
+            "label=com.timerloggedout-spec.qbc=true"], check=False)
+        for network_id in (networks.stdout or "").splitlines():
+            if network_id.strip():
+                self._call(["network", "rm", network_id.strip()],
+                           timeout=15, check=False)
+
     def run(self, task: dict) -> dict:
         if not shutil.which(self.docker):
             raise SandboxExecutionError("Docker CLI is not installed")
@@ -86,9 +108,9 @@ class DockerSandbox:
             os.chown(task_path, uid, gid)
 
         try:
-            self._call(["network", "create", "--internal", network])
+            self._call(["network", "create", "--label", "com.timerloggedout-spec.qbc=true", "--internal", network])
             self._call([
-                "run", "--detach", "--name", proxy_name,
+                "run", "--detach", "--label", "com.timerloggedout-spec.qbc=true", "--name", proxy_name,
                 "--network", "bridge", "--read-only",
                 "--tmpfs", "/tmp:rw,nosuid,nodev,size=16m",
                 "--cap-drop", "ALL",
@@ -117,7 +139,7 @@ class DockerSandbox:
                     "egress proxy did not become ready")
 
             result = self._call([
-                "run", "--rm", "--name", browser_name,
+                "run", "--rm", "--label", "com.timerloggedout-spec.qbc=true", "--name", browser_name,
                 "--network", network, "--read-only",
                 "--tmpfs", "/tmp:rw,nosuid,nodev,size=1g",
                 "--cap-drop", "ALL",
