@@ -8,6 +8,7 @@ import re
 import secrets
 import sqlite3
 import uuid
+from threading import Lock
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -168,6 +169,7 @@ class TaskStore:
 
 
 STORE = TaskStore(DB_PATH)
+TASK_CREATION_LOCK = Lock()
 app = FastAPI(title="Quarantine Browser Clerk", version="0.1.0")
 
 
@@ -223,11 +225,12 @@ def list_tasks(_auth: None = Depends(require_demo_token)):
 @app.post("/api/tasks", status_code=202)
 def create_task(payload: TaskRequest, background: BackgroundTasks,
                 _auth: None = Depends(require_demo_token)):
-    if STORE.active_count() >= 2:
-        raise HTTPException(status_code=429, detail="Task capacity reached")
-    task_id = uuid.uuid4().hex
-    task = payload.to_task(task_id)
-    STORE.create(task_id, task)
+    with TASK_CREATION_LOCK:
+        if STORE.active_count() >= 2:
+            raise HTTPException(status_code=429, detail="Task capacity reached")
+        task_id = uuid.uuid4().hex
+        task = payload.to_task(task_id)
+        STORE.create(task_id, task)
     background.add_task(execute_task, task_id, task)
     return {"task_id": task_id, "status": "queued"}
 
