@@ -118,3 +118,33 @@ def test_proxy_firewall_only_allows_browser_to_local_proxy(monkeypatch):
     assert ["iptables", "-A", "OUTPUT", "-m", "owner",
             "--uid-owner", "10002", "-j", "ACCEPT"] in calls
     assert ["iptables", "-A", "OUTPUT", "-j", "DROP"] in calls
+
+
+def test_proxy_main_drops_privileges_before_serving(monkeypatch):
+    import os
+    from clerk import egress_proxy
+
+    calls = []
+
+    class FakeServer:
+        def __init__(self, address, handler):
+            calls.append(("bind", address))
+
+        def serve_forever(self):
+            calls.append(("serve",))
+
+    monkeypatch.setattr(egress_proxy.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(
+        egress_proxy, "configure_egress_firewall",
+        lambda: calls.append(("firewall",)))
+    monkeypatch.setattr(egress_proxy.os, "setgid",
+                        lambda value: calls.append(("gid", value)))
+    monkeypatch.setattr(egress_proxy.os, "setuid",
+                        lambda value: calls.append(("uid", value)))
+    monkeypatch.setattr(egress_proxy, "_ThreadedServer", FakeServer)
+    monkeypatch.setenv("QBC_ALLOWED_DOMAINS", '["example.test"]')
+
+    assert egress_proxy.main() == 0
+    assert calls.index(("firewall",)) < calls.index(("gid", 10002))
+    assert calls.index(("gid", 10002)) < calls.index(("uid", 10002))
+    assert calls.index(("uid", 10002)) < calls.index(("serve",))
