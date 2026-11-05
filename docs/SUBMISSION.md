@@ -59,22 +59,20 @@ containment needs both domain distance from an imitated
 brand AND a lure signal, so the guard doesn't cry wolf
 at the genuine site.
 
-## Built on Vultr
+## Production execution status
 
-- **Cloud Compute**: one disposable `vhp-2c-4gb-amd`
-  per task ($0.033/h), provisioned via API, destroyed —
-  never stopped — at task end. *(Leg armed in
-  `clerk/vultr_vm.py`; activates on API-key enablement.
-  The identical runner is proven today against the
-  design's stated fallback, a disposable local profile,
-  in CI.)*
-- **Serverless Inference**: the action planner
-  (`clerk/inference.py`, OpenAI-compatible client for
-  `api.vultrinference.com/v1`) proposes steps; the
-  route guard, lookalike assessment, and approval gate
-  evaluate every proposal — the model cannot bypass
-  the machinery beneath it. Keyless, the runner uses
-  deterministic steps and says so in its receipts.
+The current repository proves the browser-clerk mechanisms on a local
+disposable Chromium profile and in GitHub Actions. It does **not** yet claim
+a live Vultr sandbox deployment.
+
+- `clerk/vultr_vm.py` currently contains low-level Vultr API helpers;
+  the runner does not yet invoke them or execute tasks remotely.
+- `clerk/inference.py` is an OpenAI-compatible client used for optional
+  P3 vision verification; it is not yet an action planner.
+- No public Vultr-hosted App URL or key-bearing cloud run is recorded.
+- The D2 implementation and deployment blockers are tracked in
+  [issue #9](https://github.com/timerloggedout-spec/quarantine-browser-clerk/issues/9).
+
 
 ## Evidence
 
