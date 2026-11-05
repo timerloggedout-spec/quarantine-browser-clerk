@@ -26,34 +26,30 @@ Repo: timerloggedout-spec/quarantine-browser-clerk.
   pin holds). Receipts for all three legs ship as the run's
   `realstack-receipts` artifact.
 
-## How this project uses Vultr
+## Intended production stack — current activation status
 
-- **Vultr Cloud Compute — a disposable VM per task.**
-  The production sandbox is a throwaway `vhp-2c-4gb-amd`
-  instance ($0.033/h) provisioned per task through the
-  Vultr API, used for exactly one task, then **destroyed —
-  never stopped, never reused** (`clerk/vultr_vm.py`). A
-  compromised or contaminated session has nowhere to
-  persist: the machine it ran on ceases to exist. The leg
-  is armed in code and activates the moment the account's
-  API key is enabled; until then the identical runner
-  executes against a disposable local Chromium profile
-  (the design's stated fallback, and what CI exercises).
-- **Vultr Serverless Inference — the planner.**
-  `clerk/inference.py` is an OpenAI-compatible client for
-  `api.vultrinference.com/v1` (`VULTR_API_KEY` /
-  `VULTR_INFERENCE_MODEL`). The model proposes browsing
-  actions; every proposal still passes the route guard,
-  the lookalike assessment, and the human-approval gate —
-  **the guard sits below the model and is not
-  LLM-bypassable**. Without a key the runner stays in
-  deterministic steps mode and says so in its receipts.
-- **Why Vultr fits the design:** the containment model
-  wants compute that is cheap enough to throw away per
-  task and an inference endpoint the planner can call
-  without leaving the same cloud's trust and billing
-  surface. One account, one API key, two products: the
-  sandbox and the brain, with the guard between them.
+The competition target is a web-facing clerk backed by isolated execution on
+Vultr. The repository's current evidence is narrower than that target:
+
+- **Vultr Cloud Compute:** `clerk/vultr_vm.py` currently contains low-level
+  `provision()` and `destroy()` API helpers. No runner/CLI path yet invokes
+  them, transfers a task to a remote VM, waits for readiness, collects remote
+  output, or guarantees VM destruction. A Vultr VM-per-task deployment is
+  **not yet implemented or evidenced**.
+- **Vultr Serverless Inference:** `clerk/inference.py` is an
+  OpenAI-compatible client for `api.vultrinference.com/v1`. The current
+  runner uses it only for optional P3 vision verification when configured;
+  it does **not** generate the browsing plan. Task steps are currently
+  supplied as deterministic JSON.
+- **Current proven execution:** the CLI runner uses a disposable local
+  Chromium profile. GitHub Actions proves the T1/T2/T3 mechanisms on its
+  hosted runner; this is not a Vultr-hosted execution claim.
+- **Activation:** no Vultr API/inference key or model configuration is
+  recorded in this repository. Keep credentials in runtime secret custody;
+  never commit them.
+
+The production integration gap is tracked in
+[issue #9](https://github.com/timerloggedout-spec/quarantine-browser-clerk/issues/9).
 
 ## Containment model (enforced below the agent)
 
