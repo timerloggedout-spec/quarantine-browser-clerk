@@ -43,7 +43,7 @@ def test_docker_sandbox_uses_internal_network_and_cleans_up(
 
     assert result["status"] == "complete"
     commands = [" ".join(c) for c in calls]
-    assert any("network create --internal" in c for c in commands)
+    assert any("network create --label com.timerloggedout-spec.qbc=true --internal" in c for c in commands)
     assert any("--read-only" in c and "--cap-drop ALL" in c
                and "no-new-privileges" in c for c in commands)
     assert any("network connect --alias qbc-proxy" in c
