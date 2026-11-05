@@ -8,6 +8,7 @@ import re
 import secrets
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -97,7 +98,7 @@ class TaskStore:
     def __init__(self, path: Path):
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.connect() as db:
+        with self.session() as db:
             db.execute("""
                 CREATE TABLE IF NOT EXISTS tasks (
                     id TEXT PRIMARY KEY,
@@ -114,6 +115,18 @@ class TaskStore:
         db = sqlite3.connect(self.path, timeout=10)
         db.row_factory = sqlite3.Row
         return db
+
+    @contextmanager
+    def session(self):
+        db = self.connect()
+        try:
+            yield db
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     def create(self, task_id: str, task: dict) -> None:
         stamp = now()
@@ -171,10 +184,10 @@ async def security_headers(request, call_next):
 
 def require_demo_token(x_qbc_demo_token: str = Header(default="")):
     expected = os.environ.get("QBC_DEMO_TOKEN", "")
-    if not expected:
+    if len(expected) < 32:
         raise HTTPException(
             status_code=503,
-            detail="Demo API is not enabled until QBC_DEMO_TOKEN is configured")
+            detail="Demo API requires a configured QBC_DEMO_TOKEN of at least 32 characters")
     if not secrets.compare_digest(x_qbc_demo_token, expected):
         raise HTTPException(status_code=401, detail="Invalid demo token")
 
