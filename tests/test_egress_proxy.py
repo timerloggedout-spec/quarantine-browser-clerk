@@ -82,11 +82,11 @@ def test_connect_proxy_consumes_headers_before_relay(monkeypatch):
     try:
         with original_connect(proxy.server_address, timeout=3) as client:
             client.sendall(
-                b"CONNECT example.test:443 HTTP/1.1\\r\\n"
-                b"Host: example.test:443\\r\\n"
-                b"Proxy-Connection: keep-alive\\r\\n\\r\\n")
+                b"CONNECT example.test:443 HTTP/1.1\r\n"
+                b"Host: example.test:443\r\n"
+                b"Proxy-Connection: keep-alive\r\n\r\n")
             response = b""
-            while b"\\r\\n\\r\\n" not in response:
+            while b"\r\n\r\n" not in response:
                 response += client.recv(1024)
             assert b"200 Connection Established" in response
             client.sendall(b"ping")
