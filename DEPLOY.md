@@ -39,7 +39,9 @@ The image contains Playwright Chromium, the runner, and the egress proxy.
 
 Create a dedicated unprivileged host account (UID/GID 10001 recommended),
 a persistent data directory owned by that account, and a strong random
-`QBC_DEMO_TOKEN`. Never put the token in Git.
+`QBC_DEMO_TOKEN`. The service account requires Docker daemon access, which is
+root-equivalent; restrict that account to this service and never expose the
+Docker socket to task containers. Never put the token in Git.
 
 ```sh
 install -d -o qbc -g qbc -m 0700 /var/lib/qbc
@@ -59,8 +61,11 @@ path. Do not expose port 3128 or the proxy container to the public internet. Con
 - One active task maximum by default (`QBC_MAX_ACTIVE_TASKS=1`); raise only after sizing the Vultr host and testing memory/CPU contention.
 - Task timeout is bounded to 15–180 seconds.
 - Browser container: read-only root filesystem, no capabilities, no-new-
-  privileges, bounded memory/CPU/PIDs, isolated internal network.
-- Proxy: no capabilities, read-only root filesystem, bounded memory/CPU/PIDs.
+  privileges, bounded memory/CPU/PIDs; shared proxy namespace with UID 10001
+  egress limited to loopback TCP/3128.
+- Proxy: read-only root filesystem and bounded memory/CPU/PIDs. NET_ADMIN,
+  SETUID, and SETGID are granted only for firewall setup; supplementary groups
+  are cleared and the process drops to UID/GID 10002 before serving.
 - The app requires `QBC_DEMO_TOKEN`; the task API returns 503 when it is
   absent. Startup recovery removes only QBC-labelled containers/networks and
   stale `qbc-*` task workspaces, then marks interrupted DB tasks failed.
