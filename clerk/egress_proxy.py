@@ -43,6 +43,7 @@ def resolve_public(host: str, port: int = 443) -> list[str]:
 
 
 class _ProxyHandler(socketserver.StreamRequestHandler):
+    rbufsize = 0
     def _deny(self, code: int, reason: str) -> None:
         body = (reason + "\n").encode()
         self.wfile.write(
@@ -61,6 +62,17 @@ class _ProxyHandler(socketserver.StreamRequestHandler):
             if len(parts) != 3 or parts[0].upper() != "CONNECT":
                 self._deny(405, "HTTPS CONNECT only")
                 return
+            header_bytes = 0
+            while True:
+                line = self.rfile.readline(8192)
+                if not line:
+                    return
+                header_bytes += len(line)
+                if header_bytes > 16384:
+                    self._deny(431, "proxy headers too large")
+                    return
+                if line in (b"\r\n", b"\n"):
+                    break
             target = parts[1]
             parsed = urlsplit("//" + target)
             host = (parsed.hostname or "").lower().rstrip(".")
