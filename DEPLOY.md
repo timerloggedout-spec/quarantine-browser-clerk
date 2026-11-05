@@ -66,7 +66,8 @@ path. Do not expose port 3128 or the proxy container to the public internet. Con
   egress limited to loopback TCP/3128.
 - Proxy: read-only root filesystem and bounded memory/CPU/PIDs. NET_ADMIN,
   SETUID, and SETGID are granted only for firewall setup; supplementary groups
-  are cleared and the process drops to UID/GID 10002 before serving.
+  are cleared and the process drops to UID/GID 10002 before serving. Both
+  iptables and ip6tables restrict that UID to DNS/53 and TCP/443.
 - The app requires `QBC_DEMO_TOKEN`; the task API returns 503 when it is
   absent. Startup recovery removes only QBC-labelled containers/networks and
   stale `qbc-*` task workspaces, then marks interrupted DB tasks failed.
