@@ -10,7 +10,8 @@
   UID and no network-administration capabilities.
 - The proxy installs namespace-local firewall rules before listening:
   browser UID 10001 may open only TCP connections to loopback port 3128;
-  proxy UID 10002 may open external sockets; all other output is dropped.
+  proxy UID 10002 may open DNS/53 and HTTPS/443 only. The policy is applied
+  to both IPv4 and IPv6; all other output is dropped.
   The proxy process installs these rules as root, then drops to UID/GID 10002.
 - The proxy accepts HTTPS CONNECT only, checks the task allowlist, resolves
   the host once, rejects non-global IPs, and connects to the checked numeric
