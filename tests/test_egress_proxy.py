@@ -1,4 +1,5 @@
 import socket
+import subprocess
 
 import pytest
 
@@ -96,3 +97,24 @@ def test_connect_proxy_consumes_headers_before_relay(monkeypatch):
         proxy.server_close()
         upstream.shutdown()
         upstream.server_close()
+
+
+def test_proxy_firewall_only_allows_browser_to_local_proxy(monkeypatch):
+    from clerk.egress_proxy import configure_egress_firewall
+
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(list(args))
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr("clerk.egress_proxy.subprocess.run", fake_run)
+    configure_egress_firewall()
+
+    assert ["iptables", "-F", "INPUT"] in calls
+    assert ["iptables", "-F", "OUTPUT"] in calls
+    assert ["iptables", "-A", "OUTPUT", "-o", "lo", "-p", "tcp",
+            "--dport", "3128", "-j", "ACCEPT"] in calls
+    assert ["iptables", "-A", "OUTPUT", "-m", "owner",
+            "--uid-owner", "10002", "-j", "ACCEPT"] in calls
+    assert ["iptables", "-A", "OUTPUT", "-j", "DROP"] in calls
