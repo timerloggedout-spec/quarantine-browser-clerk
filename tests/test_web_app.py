@@ -35,3 +35,16 @@ def test_web_task_limits_extraction_surface():
     with pytest.raises(ValidationError):
         TaskRequest(url="https://example.com/",
                     fields={"bad name": "title"})
+
+
+def test_task_store_marks_interrupted_runs_after_restart(tmp_path):
+    from web.app import TaskStore
+
+    store = TaskStore(tmp_path / "tasks.sqlite3")
+    task = {"id": "t-restart", "url": "https://example.com/"}
+    store.create("t-restart", task)
+    store.update("t-restart", "running")
+    store.mark_interrupted()
+    row = store.get("t-restart")
+    assert row["status"] == "failed"
+    assert row["error"] == "interrupted by service restart"
