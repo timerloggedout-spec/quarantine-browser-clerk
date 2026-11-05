@@ -11,5 +11,9 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && playwright install --with-deps chromium
 
 COPY . /app
-RUN mkdir -p /ms-playwright /tmp && chmod 1777 /tmp
-USER 10001:10001
+RUN groupadd --gid 10001 qbc \
+    && useradd --uid 10001 --gid 10001 --home-dir /home/qbc \
+       --create-home --shell /usr/sbin/nologin qbc \
+    && mkdir -p /ms-playwright /tmp \
+    && chmod 1777 /tmp
+USER qbc
