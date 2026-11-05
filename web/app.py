@@ -76,6 +76,8 @@ class TaskRequest(BaseModel):
             normalized.append(item)
         if not normalized:
             normalized = [host]
+        if len(normalized) > 16:
+            raise ValueError("At most 16 allowlist domains are accepted")
         if not Allowlist(normalized).allows(self.url):
             raise ValueError("The target host is outside the task allowlist")
         self.allowed_domains = sorted(set(normalized))
@@ -130,7 +132,7 @@ class TaskStore:
 
     def create(self, task_id: str, task: dict) -> None:
         stamp = now()
-        with self.connect() as db:
+        with self.session() as db:
             db.execute(
                 "INSERT INTO tasks VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (task_id, "queued", stamp, stamp,
