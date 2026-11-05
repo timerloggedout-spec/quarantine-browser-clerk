@@ -137,6 +137,8 @@ def test_proxy_main_drops_privileges_before_serving(monkeypatch):
     monkeypatch.setattr(
         egress_proxy, "configure_egress_firewall",
         lambda: calls.append(("firewall",)))
+    monkeypatch.setattr(egress_proxy.os, "setgroups",
+                        lambda value: calls.append(("groups", value)))
     monkeypatch.setattr(egress_proxy.os, "setgid",
                         lambda value: calls.append(("gid", value)))
     monkeypatch.setattr(egress_proxy.os, "setuid",
@@ -145,6 +147,7 @@ def test_proxy_main_drops_privileges_before_serving(monkeypatch):
     monkeypatch.setenv("QBC_ALLOWED_DOMAINS", '["example.test"]')
 
     assert egress_proxy.main() == 0
-    assert calls.index(("firewall",)) < calls.index(("gid", 10002))
+    assert calls.index(("firewall",)) < calls.index(("groups", []))
+    assert calls.index(("groups", [])) < calls.index(("gid", 10002))
     assert calls.index(("gid", 10002)) < calls.index(("uid", 10002))
     assert calls.index(("uid", 10002)) < calls.index(("serve",))
