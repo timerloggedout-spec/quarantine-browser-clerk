@@ -69,6 +69,10 @@ class DockerSandbox:
             if network_id.strip():
                 self._call(["network", "rm", network_id.strip()],
                            timeout=15, check=False)
+        if self.work_root.exists():
+            for stale in self.work_root.glob("qbc-*"):
+                if stale.is_dir():
+                    shutil.rmtree(stale, ignore_errors=True)
 
     def run(self, task: dict) -> dict:
         if not shutil.which(self.docker):
