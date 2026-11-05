@@ -142,36 +142,52 @@ class TaskStore:
 
     def update(self, task_id: str, status: str,
                result: dict | None = None, error: str | None = None):
-        with self.connect() as db:
+        with self.session() as db:
             db.execute(
                 "UPDATE tasks SET status=?, updated_at=?, result_json=?, error=? WHERE id=?",
                 (status, now(), json.dumps(result) if result is not None else None,
                  error, task_id))
 
     def get(self, task_id: str) -> dict | None:
-        with self.connect() as db:
+        with self.session() as db:
             row = db.execute(
                 "SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
         return dict(row) if row else None
 
     def list(self, limit: int = 20) -> list[dict]:
-        with self.connect() as db:
+        with self.session() as db:
             rows = db.execute(
                 "SELECT id,status,created_at,updated_at FROM tasks "
                 "ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
         return [dict(row) for row in rows]
 
     def active_count(self) -> int:
-        with self.connect() as db:
+        with self.session() as db:
             row = db.execute(
                 "SELECT COUNT(*) AS n FROM tasks WHERE status IN ('queued','running')"
             ).fetchone()
         return int(row["n"])
 
+    def mark_interrupted(self) -> None:
+        with self.session() as db:
+            db.execute(
+                "UPDATE tasks SET status='failed', updated_at=?, "
+                "error='interrupted by service restart' "
+                "WHERE status IN ('queued','running')",
+                (now(),))
+
+
 
 STORE = TaskStore(DB_PATH)
 TASK_CREATION_LOCK = Lock()
 app = FastAPI(title="Quarantine Browser Clerk", version="0.1.0")
+
+
+@app.on_event("startup")
+def recover_previous_tasks():
+    # One Uvicorn worker is required: startup cleanup owns this Docker namespace.
+    DockerSandbox().cleanup_orphans()
+    STORE.mark_interrupted()
 
 
 @app.middleware("http")
