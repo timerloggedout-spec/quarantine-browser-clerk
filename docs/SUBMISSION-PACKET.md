@@ -12,7 +12,7 @@ An item remains NOT_ESTABLISHED until its named evidence exists.
 | 4 | Demo script with containment moment | ✅ | `docs/DEMO-SCRIPT.md`, Beat 3 |
 | 5 | T1 core loop proof | ✅ | `tests/test_e2e.py::test_t1_core_loop` and CI |
 | 6 | T2 signature proof | ✅ | [run 41807278198](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/41807278198) SUCCESS; real-stack receipt artifact |
-| 7 | Isolated task sandbox | 🟡 IMPLEMENTED IN PR #11; NOT DEPLOYED | Per-task Docker container + internal network + allowlist-only HTTPS proxy are implemented. Vultr host provisioning, host-firewall validation, real cloud execution, and teardown evidence remain outstanding. |
+| 7 | Isolated task sandbox | 🟡 IMPLEMENTED IN PR #11; NOT DEPLOYED | Per-task Docker container + shared proxy namespace + UID firewall + allowlist-only HTTPS proxy are implemented. Vultr host provisioning, host-firewall validation, real cloud execution, and teardown evidence remain outstanding. |
 | 8 | Vultr Serverless Inference planner | 🟡 PARTIAL | `clerk/inference.py` exists and is used for optional P3 vision verification; it does not generate the browsing plan. No configured inference key/model evidence. |
 | 9 | Public demo recording | ✅ PUBLISHED per D2 promo record | [YouTube demo](https://www.youtube.com/watch?v=z-hkwnUFOqM), recorded as Public, 143s on 2026-11-04. The repo's CI receipt artifact remains the technical fallback evidence. |
 | 10 | Public app URL + lablab submission | 🔴 NOT SUBMITTED | Web UI/API is implemented in PR #11 but not deployed. Lablab draft saved at 76%; Demo platform and App URL fields remain outstanding. |
