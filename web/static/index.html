@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quarantine Browser Clerk</title>
+<style>
+:root{color-scheme:dark;font-family:ui-sans-serif,system-ui,sans-serif;background:#0b1220;color:#e5edf8}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 0%,#18334b 0,transparent 42%),#0b1220}
+main{max-width:900px;margin:0 auto;padding:40px 20px}h1{font-size:clamp(2rem,5vw,3.4rem);letter-spacing:-.04em;margin:.2em 0}
+.lead{color:#a9bfd2;max-width:720px;line-height:1.6}.tag{display:inline-block;border:1px solid #2c5870;border-radius:99px;padding:5px 10px;color:#8de2cf;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase}
+.panel{background:#101d2b;border:1px solid #263c50;border-radius:18px;padding:22px;margin:22px 0;box-shadow:0 18px 55px #0003}
+label{display:block;color:#a9bfd2;font-size:.9rem;margin:14px 0 6px}input,textarea{width:100%;background:#09131e;color:#f3f7fb;border:1px solid #365067;border-radius:9px;padding:12px;font:inherit}
+textarea{min-height:90px;resize:vertical}button{border:0;border-radius:9px;background:#8de2cf;color:#071b20;font-weight:700;padding:12px 18px;cursor:pointer;margin-top:16px}button:disabled{opacity:.5;cursor:wait}
+small,.muted{color:#8ea5b9}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#08111b;border:1px solid #24384b;border-radius:10px;padding:14px;max-height:480px;overflow:auto}
+.status{font-weight:700;color:#8de2cf} .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:650px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main>
+<span class="tag">Containment before interaction</span>
+<h1>Quarantine Browser Clerk</h1>
+<p class="lead">A browser clerk that runs each task in a disposable Docker sandbox. Requests pass through a task-scoped HTTPS egress proxy, pages are assessed before interaction, and every action returns a hash-chained receipt.</p>
+<section class="panel">
+<h2>Run a bounded extraction</h2>
+<p class="muted">HTTPS only. No credential entry, form submission, arbitrary clicks, or file execution are exposed by this demo surface. A demo access token is required.</p>
+<label for="token">Demo access token</label><input id="token" type="password" autocomplete="off" placeholder="Provided by the demo operator">
+<div class="grid">
+<div><label for="url">Target HTTPS URL</label><input id="url" type="url" value="https://example.com/" placeholder="https://example.com"></div>
+<div><label for="domains">Allowed domains (comma-separated)</label><input id="domains" value="example.com" placeholder="example.com, .example.org"></div>
+</div>
+<label for="fields">Extraction fields (JSON: name → CSS selector)</label>
+<textarea id="fields">{ "title": "title", "lead": "p" }</textarea>
+<button id="run">Run in disposable sandbox</button>
+<p id="message" class="muted" aria-live="polite"></p>
+</section>
+<section class="panel">
+<h2>Run evidence</h2>
+<p class="muted">Task status, extracted fields, and the receipt chain appear here. A failed sandbox startup is reported as a failed task; the app never falls back to an unsandboxed local browser.</p>
+<pre id="result">No task submitted.</pre>
+</section>
+<script>
+const $=id=>document.getElementById(id);
+let currentToken="";
+async function api(path,options={}){const headers={"X-QBC-Demo-Token":currentToken,...(options.headers||{})};return fetch(path,{...options,headers});}
+$("run").addEventListener("click",async()=>{
+  const button=$("run");button.disabled=true;$("message").textContent="Submitting task…";currentToken=$("token").value;
+  try{
+    const fields=JSON.parse($("fields").value);
+    const allowed_domains=$("domains").value.split(",").map(x=>x.trim()).filter(Boolean);
+    const response=await api("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:$("url").value,allowed_domains,fields})});
+    const data=await response.json();if(!response.ok)throw new Error(data.detail||"Task submission failed");
+    $("message").textContent="Task "+data.task_id+" queued.";
+    let status=data.status;
+    while(status==="queued"||status==="running"){
+      await new Promise(resolve=>setTimeout(resolve,1200));
+      const poll=await api("/api/tasks/"+data.task_id);const item=await poll.json();
+      if(!poll.ok)throw new Error(item.detail||"Status read failed");
+      status=item.status;$("message").textContent="Task status: "+status;
+      $("result").textContent=JSON.stringify(item,null,2);
+    }
+    const receipts=await api("/api/tasks/"+data.task_id+"/receipts");
+    const receiptData=await receipts.json();
+    $("result").textContent=JSON.stringify({task:data,final_status:status,receipts:receiptData.receipts},null,2);
+  }catch(error){$("message").textContent=error.message;}
+  finally{button.disabled=false;}
+});
+</script>
+</main></body></html>
