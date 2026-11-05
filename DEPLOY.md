@@ -5,13 +5,16 @@
 - The web/API process runs on a Vultr Cloud Compute host.
 - Every task runs in a fresh browser container; the container is removed after
   success, failure, or timeout.
-- The browser container joins a per-task Docker network marked `--internal`.
-  It has no direct internet route.
-- A short-lived proxy sidecar is attached to that internal network and the
-  external bridge. It accepts HTTPS CONNECT only, checks the task allowlist,
-  resolves the host once, rejects non-global IPs, and connects to the checked
-  numeric address. The browser container cannot reach the proxy's external
-  interface except through the proxy process.
+- A short-lived proxy sidecar is attached to the external Docker bridge.
+  The browser container joins the proxy's network namespace with a separate
+  UID and no network-administration capabilities.
+- The proxy installs namespace-local firewall rules before listening:
+  browser UID 10001 may open only TCP connections to loopback port 3128;
+  proxy UID 10002 may open external sockets; all other output is dropped.
+  The proxy process installs these rules as root, then drops to UID/GID 10002.
+- The proxy accepts HTTPS CONNECT only, checks the task allowlist, resolves
+  the host once, rejects non-global IPs, and connects to the checked numeric
+  address. The browser cannot bypass it with direct TCP, UDP, or DNS sockets.
 - The browser container receives only a read-only task JSON mount and a
   writable temporary output mount. It receives no Docker socket, credentials,
   host home directory, or persistent browser profile.
@@ -49,7 +52,7 @@ export QBC_DEMO_TOKEN='<secret from approved secret custody>'
 
 Run a single Uvicorn worker (startup recovery owns the QBC Docker namespace). Place a TLS reverse proxy in front of the service and expose only HTTPS.
 Keep Docker's remote API disabled. Restrict SSH to the operator's management
-path. Do not expose port 3128 or any task network to the public internet. Configure the host firewall to deny task-network access to host management services and to permit only the proxy sidecar's intended egress path; validate this from inside a disposable task before opening the public demo.
+path. Do not expose port 3128 or the proxy container to the public internet. Configure the host firewall to deny proxy-sidecar access to host management services (including via the host's public IP), and validate the namespace firewall from inside a disposable task before opening the public demo.
 
 ## Runtime limits and fail-closed behavior
 
