@@ -53,7 +53,7 @@ path. Do not expose port 3128 or any task network to the public internet. Config
 
 ## Runtime limits and fail-closed behavior
 
-- Two active tasks maximum per app process.
+- One active task maximum by default (`QBC_MAX_ACTIVE_TASKS=1`); raise only after sizing the Vultr host and testing memory/CPU contention.
 - Task timeout is bounded to 15–180 seconds.
 - Browser container: read-only root filesystem, no capabilities, no-new-
   privileges, bounded memory/CPU/PIDs, isolated internal network.
