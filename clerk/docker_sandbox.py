@@ -1,9 +1,10 @@
 """Run a task in a disposable, egress-restricted Docker sandbox.
 
-The task container is attached only to an internal Docker network. A small
-proxy sidecar is attached to that network and the external bridge; it allows
-only HTTPS/443 CONNECT to task-allowlisted hosts resolving to public IPs.
-Neither the browser container nor its filesystem is reused across tasks.
+The browser container shares the short-lived proxy sidecar's network
+namespace. Namespace firewall rules allow the browser UID only to reach the
+loopback proxy listener; only the proxy UID can open external sockets. The
+proxy additionally enforces HTTPS/443, the task allowlist, and public-IP DNS
+validation. Neither browser container nor filesystem is reused across tasks.
 """
 from __future__ import annotations
 
