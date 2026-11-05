@@ -6,7 +6,7 @@ An item remains NOT_ESTABLISHED until its named evidence exists.
 
 | # | Artifact / gate | State | Evidence / remaining work |
 |---|---|---|---|
-| 1 | Public repo, main green | ✅ | `timerloggedout-spec/quarantine-browser-clerk`; current main `d3f0ffbf03f6`; CI run [41822618113](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/41822618113) SUCCESS |
+| 1 | Public repo, main green | ✅ | `timerloggedout-spec/quarantine-browser-clerk`; current main `1f6c6345a85d`; CI run [41822618113](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/41822618113) SUCCESS; post-fix CI [42129363148](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/42129363148) SUCCESS |
 | 2 | README with Vultr-use / architecture section | ✅ | Updated to distinguish the intended production stack from what is actually wired |
 | 3 | Submission copy | 🟡 DRAFT | `docs/SUBMISSION.md`; must be finalized after cloud deployment and URL evidence |
 | 4 | Demo script with containment moment | ✅ | `docs/DEMO-SCRIPT.md`, Beat 3 |
