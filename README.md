@@ -28,28 +28,47 @@ Repo: timerloggedout-spec/quarantine-browser-clerk.
 
 ## Intended production stack — current activation status
 
-The competition target is a web-facing clerk backed by isolated execution on
-Vultr. The repository's current evidence is narrower than that target:
+The entry now contains a controlled web UI/API and a disposable Docker
+execution path. The deployment evidence remains separate:
 
-- **Vultr Cloud Compute:** `clerk/vultr_vm.py` currently contains low-level
-  `provision()` and `destroy()` API helpers. No runner/CLI path yet invokes
-  them, transfers a task to a remote VM, waits for readiness, collects remote
-  output, or guarantees VM destruction. A Vultr VM-per-task deployment is
-  **not yet implemented or evidenced**.
-- **Vultr Serverless Inference:** `clerk/inference.py` is an
-  OpenAI-compatible client for `api.vultrinference.com/v1`. The current
-  runner uses it only for optional P3 vision verification when configured;
-  it does **not** generate the browsing plan. Task steps are currently
-  supplied as deterministic JSON.
-- **Current proven execution:** the CLI runner uses a disposable local
-  Chromium profile. GitHub Actions proves the T1/T2/T3 mechanisms on its
-  hosted runner; this is not a Vultr-hosted execution claim.
-- **Activation:** no Vultr API/inference key or model configuration is
-  recorded in this repository. Keep credentials in runtime secret custody;
-  never commit them.
+- **Web surface:** `web/app.py` + `web/static/index.html`. It accepts HTTPS
+  URL + CSS extraction fields only, requires a strong `QBC_DEMO_TOKEN`, and
+  does not expose arbitrary clicks, credential entry, downloads, or browser
+  arguments.
+- **Task isolation:** `clerk/docker_sandbox.py` creates a fresh browser
+  container on a per-task internal Docker network and a short-lived egress
+  proxy. The proxy permits allowlisted HTTPS/443 CONNECT only and rejects
+  non-public DNS answers. The browser container has a read-only root, no
+  added capabilities, resource limits, and only task/result mounts.
+- **Vultr Cloud Compute:** the intended deployment is this web service on a
+  Vultr Cloud Compute host, with each task isolated in a fresh Docker
+  container. The low-level `clerk/vultr_vm.py` provision/destroy helpers are
+  not invoked by the web app. No Vultr host deployment, public App URL, or
+  real cloud execution is yet evidenced.
+- **Vultr Serverless Inference:** `clerk/inference.py` remains an
+  OpenAI-compatible client used for optional P3 vision verification only;
+  it does not generate the browsing plan. The web API currently builds
+  deterministic `goto` + `extract` steps.
+- **Network boundary:** the internal Docker network and egress proxy are
+  implemented, but host-firewall isolation and the full deployment recipe
+  still require a real Vultr-host validation. The web app fails closed when
+  Docker is unavailable; it never falls back to an unsandboxed browser.
+- **Credentials:** no Vultr API/inference key or `QBC_DEMO_TOKEN` is recorded
+  in this repository. Keep all runtime secrets in approved custody; never
+  commit them.
 
-The production integration gap is tracked in
+Build and deployment instructions: [DEPLOY.md](DEPLOY.md). Remaining
+production acceptance criteria are tracked in
 [issue #9](https://github.com/timerloggedout-spec/quarantine-browser-clerk/issues/9).
+
+
+## Web application
+
+Build the sandbox image and run the API/UI on the Vultr host as described in
+[DEPLOY.md](DEPLOY.md). The public demo API requires a 32-character-or-longer
+`QBC_DEMO_TOKEN`. The task interface is intentionally limited to safe HTTPS
+extraction; the CLI runner retains the lower-level policy mechanisms for the
+signature demo and controlled tests.
 
 ## Containment model (enforced below the agent)
 
