@@ -14,6 +14,7 @@ and the blocked step halts the run: the availability
 report is the deliverable.
 """
 import http.server
+import os
 import sys
 import threading
 from pathlib import Path
@@ -26,9 +27,11 @@ from clerk.runner import Runner  # noqa: E402
 from clerk.switchtable import triggers_for  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
+_BROWSER_PATH = Path(os.environ.get(
+    "PLAYWRIGHT_BROWSERS_PATH",
+    str(Path.home() / ".cache" / "ms-playwright")))
 pytestmark = pytest.mark.skipif(
-    not Path.home().joinpath(".cache/ms-playwright").exists()
-    and not list(Path("/root/.cache/ms-playwright").glob("*")),
+    not _BROWSER_PATH.exists() or not any(_BROWSER_PATH.iterdir()),
     reason="playwright browsers not installed")
 
 
