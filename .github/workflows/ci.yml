@@ -13,3 +13,25 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -t qbc-sandbox:ci .
       - run: docker run --rm qbc-sandbox:ci python -m pytest -p no:cacheprovider tests/ -q
+      - name: Verify proxy namespace firewall
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() { docker rm -f qbc-proxy-smoke qbc-sink-smoke >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          docker run -d --name qbc-sink-smoke --network bridge qbc-sandbox:ci python -m http.server 3129 --bind 0.0.0.0 >/dev/null
+          sink_ready=0
+          for i in {1..40}; do
+            if docker exec qbc-sink-smoke python -c "import socket; s=socket.create_connection(('127.0.0.1',3129),1); s.close()" >/dev/null 2>&1; then sink_ready=1; break; fi
+            sleep .25
+          done
+          test "$sink_ready" -eq 1
+          docker run -d --name qbc-proxy-smoke --network bridge --read-only --tmpfs /tmp:rw,nosuid,nodev,size=16m --tmpfs /run:rw,nosuid,nodev,size=16m --cap-drop ALL --cap-add NET_ADMIN --cap-add SETUID --cap-add SETGID --security-opt no-new-privileges --pids-limit 64 --memory 128m --cpus 0.25 --user 0:0 --env 'QBC_ALLOWED_DOMAINS=["example.com"]' qbc-sandbox:ci python -m clerk.egress_proxy >/dev/null
+          proxy_ready=0
+          for i in {1..40}; do
+            if docker exec --user 10002:10002 qbc-proxy-smoke python -c "import socket; s=socket.create_connection(('127.0.0.1',3128),1); s.close()" >/dev/null 2>&1; then proxy_ready=1; break; fi
+            sleep .25
+          done
+          test "$proxy_ready" -eq 1
+          sink_ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' qbc-sink-smoke)"
+          docker run --rm --network container:qbc-proxy-smoke --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,nosuid,nodev,size=16m --env "QBC_SINK_IP=$sink_ip" qbc-sandbox:ci python tests/proxy_namespace_smoke.py
