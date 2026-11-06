@@ -7,6 +7,7 @@ the agent is CONTAINED — one containment receipt, no
 credential ever entered, the run still ends clean.
 """
 import http.server
+import os
 import sys
 import threading
 from functools import partial
@@ -19,9 +20,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from clerk.runner import Runner  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
+_BROWSER_PATH = Path(os.environ.get(
+    "PLAYWRIGHT_BROWSERS_PATH",
+    str(Path.home() / ".cache" / "ms-playwright")))
 pytestmark = pytest.mark.skipif(
-    not Path.home().joinpath(".cache/ms-playwright").exists()
-    and not list(Path("/root/.cache/ms-playwright").glob("*")),
+    not _BROWSER_PATH.exists() or not any(_BROWSER_PATH.iterdir()),
     reason="playwright browsers not installed")
 
 

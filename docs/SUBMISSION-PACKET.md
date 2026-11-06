@@ -6,18 +6,18 @@ An item remains NOT_ESTABLISHED until its named evidence exists.
 
 | # | Artifact / gate | State | Evidence / remaining work |
 |---|---|---|---|
-| 1 | Public repo, main green | ✅ | `timerloggedout-spec/quarantine-browser-clerk`; current main `1f6c6345a85d`; CI run [41822618113](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/41822618113) SUCCESS; post-fix CI [42129363148](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/42129363148) SUCCESS |
+| 1 | Public repo, main green | ✅ | `timerloggedout-spec/quarantine-browser-clerk`; current main `457cad7213eb`; CI run [41822618113](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/41822618113) SUCCESS; post-fix CI [42129363148](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/42129363148) SUCCESS |
 | 2 | README with Vultr-use / architecture section | ✅ | Updated to distinguish the intended production stack from what is actually wired |
 | 3 | Submission copy | 🟡 DRAFT | `docs/SUBMISSION.md`; must be finalized after cloud deployment and URL evidence |
 | 4 | Demo script with containment moment | ✅ | `docs/DEMO-SCRIPT.md`, Beat 3 |
 | 5 | T1 core loop proof | ✅ | `tests/test_e2e.py::test_t1_core_loop` and CI |
 | 6 | T2 signature proof | ✅ | [run 41807278198](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/41807278198) SUCCESS; real-stack receipt artifact |
-| 7 | Vultr sandbox execution | 🔴 NOT IMPLEMENTED | `clerk/vultr_vm.py` has low-level provision/destroy helpers only; no runner orchestration, remote task transfer, readiness wait, result collection, or guaranteed destroy path. No key-bearing Vultr run. |
+| 7 | Isolated task sandbox | 🟡 IMPLEMENTED IN PR #11; NOT DEPLOYED | Per-task Docker container + shared proxy namespace + UID firewall + allowlist-only HTTPS proxy are implemented. Vultr host provisioning, host-firewall validation, real cloud execution, and teardown evidence remain outstanding. |
 | 8 | Vultr Serverless Inference planner | 🟡 PARTIAL | `clerk/inference.py` exists and is used for optional P3 vision verification; it does not generate the browsing plan. No configured inference key/model evidence. |
 | 9 | Public demo recording | ✅ PUBLISHED per D2 promo record | [YouTube demo](https://www.youtube.com/watch?v=z-hkwnUFOqM), recorded as Public, 143s on 2026-11-04. The repo's CI receipt artifact remains the technical fallback evidence. |
-| 10 | Public app URL + lablab submission | 🔴 NOT SUBMITTED | Lablab draft saved at 76%; submission state is NOT submitted. Required Demo platform and App URL fields remain blocked on production deployment. |
+| 10 | Public app URL + lablab submission | 🔴 NOT SUBMITTED | Web UI/API is implemented in PR #11 but not deployed. Lablab draft saved at 76%; Demo platform and App URL fields remain outstanding. |
 | 11 | P3 switch table + P4 availability pre-flight | ✅ MERGED / CI GREEN | PR [#6](https://github.com/timerloggedout-spec/quarantine-browser-clerk/pull/6) merged as `d3f0ffbf03f6`; [CI 41822618113](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/41822618113) and [demo-realstack 41822618119](https://github.com/timerloggedout-spec/quarantine-browser-clerk/actions/runs/41822618119) SUCCESS |
-| 12 | GitHub App identity (AppID) | 🟡 PACKAGE PREPARED; NOT PROVISIONED | Moniker `Proctor · QuarantineBrowserClerk` issued. Non-secret manifest package is proposed in monorepo PR [#5022](https://github.com/timerloggedout-spec/termux-monorepo/pull/5022). Still requires owner-session Create confirmation, installation consent for this repo only, AppID-lane conversion, 0600 custody, and API verification. |
+| 12 | GitHub App identity (AppID) | 🟡 PACKAGE PREPARED; NOT PROVISIONED | Moniker `Proctor · QuarantineBrowserClerk` issued. Non-secret manifest package merged to termux-monorepo master in [PR #5022](https://github.com/timerloggedout-spec/termux-monorepo/pull/5022). Still requires owner-session Create confirmation, installation consent for this repo only, AppID-lane conversion, 0600 custody, and API verification. |
 | 13 | Provider-dispatch provenance | 🟡 NO EXTERNAL BUILD DISPATCH CLAIMED | D2's recorded route was command-dispatch. The current chat has no linked Agent Swarm; no provider session is claimed for this maintenance. PR #8 records this direct repository change explicitly. |
 
 ## Honesty rails for the landing

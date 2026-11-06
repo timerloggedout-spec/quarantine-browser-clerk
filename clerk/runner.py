@@ -206,6 +206,9 @@ class Runner:
                 exe = _chromium_executable()
                 if exe:
                     launch_kw["executable_path"] = exe
+                if self.task.get("proxy_server"):
+                    launch_kw["proxy"] = {
+                        "server": self.task["proxy_server"]}
                 ctx = pw.chromium.launch_persistent_context(
                     str(self.profile_dir), headless=True,
                     accept_downloads=True,
